@@ -123,7 +123,7 @@ def _no_owner_message(jurisdiction: str) -> str:
 # Data loading (cached)
 # ---------------------------------------------------------------------------
 
-@st.cache_data
+@st.cache_data(ttl=3600, max_entries=1)
 def load_scores() -> pl.DataFrame:
     if not SCORES_FILE.exists():
         return pl.DataFrame()
@@ -132,7 +132,7 @@ def load_scores() -> pl.DataFrame:
     )
 
 
-@st.cache_data
+@st.cache_data(ttl=3600, max_entries=1)
 def load_properties() -> pl.DataFrame:
     if not PROPERTIES_FILE.exists():
         return pl.DataFrame(schema={
@@ -143,7 +143,7 @@ def load_properties() -> pl.DataFrame:
     return pl.read_parquet(PROPERTIES_FILE)
 
 
-@st.cache_data
+@st.cache_data(ttl=3600, max_entries=1)
 def load_violations() -> pl.DataFrame:
     if not VIOLATIONS_FILE.exists():
         return pl.DataFrame(schema={
@@ -154,7 +154,7 @@ def load_violations() -> pl.DataFrame:
     return pl.read_parquet(VIOLATIONS_FILE)
 
 
-@st.cache_data
+@st.cache_data(ttl=3600, max_entries=1)
 def load_owner_registrations() -> pl.DataFrame:
     if not OWNER_REG_FILE.exists():
         return pl.DataFrame(schema={

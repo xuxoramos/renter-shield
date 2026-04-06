@@ -21,6 +21,15 @@ apt update && apt upgrade -y
 curl -fsSL https://get.docker.com | sh
 apt install -y docker-compose-plugin
 
+# Swap — the CX22 has only 4 GB RAM and no swap by default.
+# A 2 GB swapfile gives the OOM killer more headroom and prevents
+# Streamlit processes from being killed during memory spikes.
+fallocate -l 2G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
 # Firewall
 ufw allow OpenSSH
 ufw allow 80/tcp
