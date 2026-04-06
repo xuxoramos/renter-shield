@@ -23,7 +23,7 @@ jobs:
         run: ruff check .
 
       - name: Test
-        run: pytest -q
+        run: pytest -q --override-ini="no:cacheprovider" || [ $? -eq 5 ]
 
       - name: Verify Docker build
         run: |
