@@ -14,8 +14,8 @@ RUN pip install --no-cache-dir -e "." streamlit
 COPY renter_shield/ renter_shield/
 COPY streamlit_renter.py streamlit_investigator.py ./
 
-# Copy scored output (baked into image for single-VPS deploy)
-COPY output/all_landlords_harm_scores.parquet output/
+# Output dir will be mounted as a volume at runtime
+RUN mkdir -p output
 
 # Expose services: API, renter Streamlit, investigator Streamlit
 EXPOSE 8000 8501 8502
@@ -25,6 +25,6 @@ COPY deploy/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 ENV LI_OUTPUT_DIR=/app/output \
-    LI_API_KEY=changeme
+    LI_API_KEYS=changeme
 
 ENTRYPOINT ["/entrypoint.sh"]

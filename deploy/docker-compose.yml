@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       - LI_OUTPUT_DIR=/app/output
-      - LI_API_KEY=${LI_API_KEY:-changeme}
+      - LI_API_KEYS=${LI_API_KEYS:-changeme}
     volumes:
       # Mount scored data at runtime (alternative to baking it into the image)
       - ../output:/app/output:ro
