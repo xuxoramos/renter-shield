@@ -475,7 +475,7 @@ def page_owner_detail(owner_id: str) -> None:
     if len(owner_props) == 0:
         st.info("No linked properties found for this owner.")
     else:
-        for row in owner_props.sort("address").iter_rows(named=True):
+        for idx, row in enumerate(owner_props.sort("address").iter_rows(named=True)):
             bbl = row["bbl"]
             addr = row["address"] or bbl
             prop_viols = viols_df.filter(pl.col("bbl") == bbl)
@@ -496,7 +496,7 @@ def page_owner_detail(owner_id: str) -> None:
             cols[2].write(viol_text)
             cols[3].button(
                 "Details",
-                key=f"owner_prop_{bbl}",
+                key=f"owner_prop_{bbl}_{idx}",
                 on_click=nav_link_property,
                 args=(bbl,),
             )
