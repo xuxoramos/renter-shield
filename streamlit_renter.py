@@ -12,6 +12,7 @@ Expects Parquet files in ``output/`` (produced by the pipeline).
 
 import os
 from pathlib import Path
+from urllib.parse import quote
 
 import polars as pl
 import streamlit as st
@@ -192,7 +193,16 @@ page = st.query_params.get("page", "address")
 nav_bbl = st.query_params.get("bbl", None)
 
 
-def nav_link_address() -> None:
+def nav_link_address(keep_query: bool = False) -> None:
+    st.query_params["page"] = "address"
+    if "bbl" in st.query_params:
+        del st.query_params["bbl"]
+    if not keep_query and "q" in st.query_params:
+        del st.query_params["q"]
+
+
+def nav_link_back_to_results() -> None:
+    """Return to the address search page, preserving the search query."""
     st.query_params["page"] = "address"
     if "bbl" in st.query_params:
         del st.query_params["bbl"]
@@ -215,11 +225,19 @@ def page_address_search() -> None:
         "housing code violations and the landlord's track record."
     )
 
+    # Restore search query from URL if returning from property detail
+    saved_q = st.query_params.get("q", "")
     search_addr = st.text_input(
         "Address",
+        value=saved_q,
         placeholder="e.g. 351 92 STREET, 400 N REDFIELD, 3601 5TH AVE",
         key="addr_search",
     )
+    # Persist current query to URL so back-navigation restores it
+    if search_addr and len(search_addr) >= 3:
+        st.query_params["q"] = search_addr
+    elif "q" in st.query_params:
+        del st.query_params["q"]
 
     if not search_addr or len(search_addr) < 3:
         st.info("Enter at least 3 characters to search.")
@@ -295,7 +313,11 @@ def page_property(bbl: str) -> None:
     addr = prop["address"] or bbl
     jur_display = JURISDICTION_DISPLAY.get(jur, jur.title())
 
-    st.button("← Search another address", on_click=nav_link_address, key="bc_addr")
+    has_prior_search = "q" in st.query_params
+    if has_prior_search:
+        st.button("← Back to results", on_click=nav_link_back_to_results, key="bc_results")
+    else:
+        st.button("← Search another address", on_click=nav_link_address, key="bc_addr")
     st.title(f"🏠 {addr}")
     st.caption(DISCLAIMER)
 
@@ -343,8 +365,9 @@ def page_property(bbl: str) -> None:
             o_lk_color = owner_row.get("likert_color", "⚪")
             # Extract display name from owner_id ("john_smith [nyc]" → "John Smith")
             display_name = owner_id.split(" [")[0].replace("_", " ").title() if owner_id else "Unknown"
+            inv_url = f"/investigator/?page=owner&owner={quote(owner_id)}"
             st.subheader("Landlord Track Record")
-            st.markdown(f"**Owner:** {display_name}")
+            st.markdown(f"**Owner:** [{display_name}]({inv_url}) ↗")
             oc1, oc2, oc3 = st.columns(3)
             oc1.metric("Rating", f"{o_lk_color} {o_lk_label}")
             oc2.metric("Properties Managed", f"{owner_row['num_properties']:,}")
