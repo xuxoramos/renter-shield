@@ -1,0 +1,27 @@
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    environment:
+      - LI_OUTPUT_DIR=/app/output
+      - LI_API_KEY=${LI_API_KEY:-changeme}
+    volumes:
+      # Mount scored data at runtime (alternative to baking it into the image)
+      - ../output:/app/output:ro
+    expose:
+      - "8000"
+      - "8501"
+      - "8502"
+
+  nginx:
+    image: nginx:1-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      # Uncomment after running certbot
+      # - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - app
