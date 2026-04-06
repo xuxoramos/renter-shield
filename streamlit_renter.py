@@ -385,6 +385,27 @@ def page_property(bbl: str) -> None:
             oc1.metric("Rating", f"{o_lk_color} {o_lk_label}")
             oc2.metric("Properties Managed", f"{owner_row['num_properties']:,}")
             oc3.metric("Total Violations (all properties)", f"{owner_row['total_violations']:,}")
+
+            with st.expander("What does the landlord rating mean?"):
+                st.markdown(
+                    "The **landlord rating** is a composite score that compares "
+                    "this owner's violation record against all other landlords "
+                    "in the same jurisdiction.\n\n"
+                    "It considers four factors:\n"
+                    "- **Severity** — how serious the violations are\n"
+                    "- **Density** — violations per residential unit\n"
+                    "- **Spread** — how many of their properties have violations\n"
+                    "- **Persistence** — what fraction remains unresolved\n\n"
+                    "| Rating | Meaning |\n"
+                    "|---|---|\n"
+                    "| 🟢 Low concern | Better than ~80% of landlords |\n"
+                    "| 🟡 Some concerns | Moderate violation history |\n"
+                    "| 🟠 Moderate concerns | Above-average violation record |\n"
+                    "| 🔴 Significant concerns | Worse than ~80% of landlords |\n"
+                    "| 🔴 Severe concerns | Among the worst in the jurisdiction |\n\n"
+                    f"**This landlord**: {owner_row['num_properties']:,} properties, "
+                    f"{owner_row['total_violations']:,} total violations across all of them."
+                )
         else:
             st.info("Owner identified but no harm score computed.")
     else:
