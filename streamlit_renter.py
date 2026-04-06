@@ -341,7 +341,10 @@ def page_property(bbl: str) -> None:
             owner_row = score_match.row(0, named=True)
             o_lk_label = owner_row.get("likert_label", "Unknown")
             o_lk_color = owner_row.get("likert_color", "⚪")
+            # Extract display name from owner_id ("john_smith [nyc]" → "John Smith")
+            display_name = owner_id.split(" [")[0].replace("_", " ").title() if owner_id else "Unknown"
             st.subheader("Landlord Track Record")
+            st.markdown(f"**Owner:** {display_name}")
             oc1, oc2, oc3 = st.columns(3)
             oc1.metric("Rating", f"{o_lk_color} {o_lk_label}")
             oc2.metric("Properties Managed", f"{owner_row['num_properties']:,}")
@@ -389,7 +392,7 @@ def page_property(bbl: str) -> None:
     )
     st.dataframe(
         display_viols.slice((viol_page - 1) * page_size, page_size).to_pandas(),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 

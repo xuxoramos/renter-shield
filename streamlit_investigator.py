@@ -226,7 +226,7 @@ def page_overview() -> None:
                     key=f"btn_{jur}",
                     on_click=nav_link_jur,
                     args=(jur,),
-                    use_container_width=True,
+                    width="stretch",
                 )
 
     # --- unscored jurisdiction cards ---
@@ -260,7 +260,7 @@ def page_overview() -> None:
                         key=f"btn_{jur}",
                         on_click=nav_link_jur,
                         args=(jur,),
-                        use_container_width=True,
+                        width="stretch",
                     )
 
     # Cross-jurisdiction search
