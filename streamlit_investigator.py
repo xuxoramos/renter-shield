@@ -191,9 +191,17 @@ def page_overview() -> None:
 
     total_viols = df["total_violations"].sum()
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Jurisdictions", len(scored_jurs) + len(unscored_jurs))
-    c2.metric("Scored owners", f"{len(df):,}")
-    c3.metric("Total violations", f"{total_viols:,}")
+    c1.metric("Jurisdictions", len(scored_jurs) + len(unscored_jurs),
+             help="Cities with violation data loaded into the system")
+    c2.metric("Scored owners", f"{len(df):,}",
+             help="Landlords matched to properties via name and address resolution")
+    c3.metric("Total violations", f"{total_viols:,}",
+             help="Sum of all housing code violations across scored owners")
+    c4.markdown("**Ownership confidence**",
+                help="How reliably violations are attributed to a landlord. "
+                     "High = name + address corroborated. "
+                     "Medium = name match only. "
+                     "Low = address grouping only.")
     for row in conf_counts.iter_rows(named=True):
         label = CONFIDENCE_LABELS.get(row["confidence"], row["confidence"])
         c4.metric(label, f"{row['len']:,}")
@@ -391,19 +399,29 @@ def page_jurisdiction(jur: str) -> None:
     st.caption(DISCLAIMER)
 
     c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("Scored owners", f"{len(jur_df):,}")
-    c2.metric("Violations", f"{jur_df['total_violations'].sum():,}")
-    c3.metric("Critical", f"{jur_df['class_c_violations'].sum():,}")
-    c4.metric("Avg score", f"{jur_df['total_harm_score'].mean():,.0f}")
-    c5.metric("Max score", f"{jur_df['total_harm_score'].max():,.0f}")
+    c1.metric("Scored owners", f"{len(jur_df):,}",
+             help="Landlords matched to properties in this jurisdiction")
+    c2.metric("Violations", f"{jur_df['total_violations'].sum():,}",
+             help="Total housing code violations across all scored owners")
+    c3.metric("Critical", f"{jur_df['class_c_violations'].sum():,}",
+             help="Tier 1 (most severe) violations — structural, fire safety, lead, etc.")
+    c4.metric("Avg score", f"{jur_df['total_harm_score'].mean():,.0f}",
+             help="Average harm score across all scored owners in this jurisdiction")
+    c5.metric("Max score", f"{jur_df['total_harm_score'].max():,.0f}",
+             help="Highest harm score among scored owners in this jurisdiction")
 
     conf_counts = jur_df.group_by("confidence").len().sort("confidence")
     if len(conf_counts) > 0:
+        st.caption(
+            "**Ownership match confidence** — how reliably violations are "
+            "attributed to each landlord. See Methodology for details."
+        )
         conf_cols = st.columns(len(conf_counts))
         for i, row in enumerate(conf_counts.iter_rows(named=True)):
             label = CONFIDENCE_LABELS.get(row["confidence"], row["confidence"])
             desc = CONFIDENCE_DESCRIPTIONS.get(row["confidence"], "")
-            conf_cols[i].metric(label, f"{row['len']:,}")
+            conf_cols[i].metric(label, f"{row['len']:,}",
+                                help=desc)
             conf_cols[i].caption(desc)
 
     st.divider()
@@ -448,6 +466,16 @@ def page_jurisdiction(jur: str) -> None:
     start = (tbl_page - 1) * page_size
 
     page_df = filtered.slice(start, page_size)
+
+    # Column headers
+    hdr = st.columns([4, 1, 1, 2, 2, 2, 1])
+    hdr[0].markdown("**Owner**")
+    hdr[1].markdown("**Confidence**", help="How reliably violations are attributed to this landlord")
+    hdr[2].markdown("**Rating**", help="Comparative rating within the jurisdiction (SVI-based)")
+    hdr[3].markdown("**Harm Score**", help="Weighted composite of severity, density, spread, and persistence")
+    hdr[4].markdown("**Portfolio**")
+    hdr[5].markdown("**Violations**")
+    hdr[6].markdown("")
 
     for row in page_df.iter_rows(named=True):
         conf_badge = CONFIDENCE_LABELS.get(row["confidence"], row["confidence"])
@@ -504,35 +532,49 @@ def page_owner(owner_id: str) -> None:
     st.divider()
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Jurisdiction", display_jur)
-    c2.metric("Legacy Harm Score", f"{row['total_harm_score']:,.0f}")
+    c2.metric("Legacy Harm Score", f"{row['total_harm_score']:,.0f}",
+             help="Weighted-linear composite: severity × 0.4 + density × 0.3 + widespread × 0.2 + persistence × 0.1")
     svi = row.get("svi_composite")
-    c3.metric("SVI Composite", f"{svi:.2f}" if svi is not None else "N/A")
+    c3.metric("SVI Composite", f"{svi:.2f}" if svi is not None else "N/A",
+             help="Percentile-based composite (0–1) comparing this owner to peers in the same jurisdiction")
     lk_color = row.get("likert_color", "")
     lk_label = row.get("likert_label", "")
-    c4.metric("Rating", f"{lk_color} {lk_label}")
+    c4.metric("Rating", f"{lk_color} {lk_label}",
+             help="Likert scale derived from SVI Composite: Low concern → Severe concerns")
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Properties", f"{row['num_properties']:,}")
-    c2.metric("Total Violations", f"{row['total_violations']:,}")
-    c3.metric("Critical (Tier 1)", f"{row['class_c_violations']:,}")
-    c4.metric("Unresolved", f"{row['unresolved_violations']:,}")
+    c1.metric("Properties", f"{row['num_properties']:,}",
+             help="Distinct registered properties linked to this owner")
+    c2.metric("Total Violations", f"{row['total_violations']:,}",
+             help="All housing code violations across every linked property")
+    c3.metric("Critical (Tier 1)", f"{row['class_c_violations']:,}",
+             help="Most severe violations — structural, fire safety, lead, vermin")
+    c4.metric("Unresolved", f"{row['unresolved_violations']:,}",
+             help="Violations with status 'open' — not yet remediated")
 
     c1, c2, _c3, _c4 = st.columns(4)
-    c1.metric("Total Units", f"{row['total_units']:,.0f}")
+    c1.metric("Total Units", f"{row['total_units']:,.0f}",
+             help="Sum of residential units across all linked properties (density denominator)")
 
     st.divider()
     st.subheader("Score Breakdown")
 
     # SVI theme percentiles
-    st.markdown("**SVI Theme Percentiles** (within-jurisdiction or pooled for small jurisdictions)")
+    st.markdown("**SVI Theme Percentiles** (within-jurisdiction or pooled for small jurisdictions)",
+                help="Each theme is the average percentile rank of its component metrics. "
+                     "0 = best in the group, 1 = worst.")
     theme_sev = row.get("theme_severity")
     theme_port = row.get("theme_portfolio")
     theme_comp = row.get("theme_compliance")
     tc1, tc2, tc3, tc4 = st.columns(4)
-    tc1.metric("Severity Theme", f"{theme_sev:.2f}" if theme_sev is not None else "N/A")
-    tc2.metric("Portfolio Theme", f"{theme_port:.2f}" if theme_port is not None else "N/A")
-    tc3.metric("Compliance Theme", f"{theme_comp:.2f}" if theme_comp is not None else "N/A")
-    tc4.metric("SVI Composite", f"{svi:.2f}" if svi is not None else "N/A")
+    tc1.metric("Severity Theme", f"{theme_sev:.2f}" if theme_sev is not None else "N/A",
+              help="Percentile rank of weighted violation severity (Critical=5, Serious=2.5, Minor=1)")
+    tc2.metric("Portfolio Theme", f"{theme_port:.2f}" if theme_port is not None else "N/A",
+              help="Percentile rank of violations-per-unit density and cross-property spread")
+    tc3.metric("Compliance Theme", f"{theme_comp:.2f}" if theme_comp is not None else "N/A",
+              help="Percentile rank of unresolved violation rate (persistence)")
+    tc4.metric("SVI Composite", f"{svi:.2f}" if svi is not None else "N/A",
+              help="Average of the three theme percentiles — drives the Likert rating")
 
     st.markdown("**Legacy Weighted-Linear Breakdown**")
 

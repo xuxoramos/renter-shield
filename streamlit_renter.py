@@ -267,6 +267,15 @@ def page_address_search() -> None:
 
     st.write(f"**{len(matches)}** matching properties (showing up to 100)")
 
+    # Column headers for search results
+    hdr = st.columns([3, 2, 1, 2, 2, 1])
+    hdr[0].markdown("**Address**")
+    hdr[1].markdown("**City**")
+    hdr[2].markdown("**Rating**", help="Property-level rating based on violation severity and status")
+    hdr[3].markdown("**Violations**")
+    hdr[4].markdown("**Owner**")
+    hdr[5].markdown("")
+
     for row in matches.iter_rows(named=True):
         bbl = row["bbl"]
         jur = row["jurisdiction"]
@@ -337,7 +346,8 @@ def page_property(bbl: str) -> None:
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Jurisdiction", jur_display)
-    c2.metric("Rating", f"{lk_color} {lk_label}")
+    c2.metric("Rating", f"{lk_color} {lk_label}",
+             help="Based on violation severity, count, and resolution status at this address")
     units = prop.get("units_residential")
     c3.metric("Residential Units", f"{units:,.0f}" if units else "Unknown")
     yb = prop.get("year_built")
@@ -382,9 +392,12 @@ def page_property(bbl: str) -> None:
                 key="owner_link",
             )
             oc1, oc2, oc3 = st.columns(3)
-            oc1.metric("Rating", f"{o_lk_color} {o_lk_label}")
-            oc2.metric("Properties Managed", f"{owner_row['num_properties']:,}")
-            oc3.metric("Total Violations (all properties)", f"{owner_row['total_violations']:,}")
+            oc1.metric("Rating", f"{o_lk_color} {o_lk_label}",
+                       help="Compares this landlord to all others in the same city")
+            oc2.metric("Properties Managed", f"{owner_row['num_properties']:,}",
+                       help="Distinct registered properties linked to this landlord")
+            oc3.metric("Total Violations (all properties)", f"{owner_row['total_violations']:,}",
+                       help="Sum of housing code violations across every property they manage")
 
             with st.expander("What does the landlord rating mean?"):
                 st.markdown(
@@ -420,9 +433,12 @@ def page_property(bbl: str) -> None:
         return
 
     vc1, vc2, vc3 = st.columns(3)
-    vc1.metric("Total Violations", f"{pv['total']:,}")
-    vc2.metric("Open", f"{pv['open']:,}")
-    vc3.metric("Critical", f"{pv['critical']:,}")
+    vc1.metric("Total Violations", f"{pv['total']:,}",
+              help="All housing code violations recorded at this address since Jan 2022")
+    vc2.metric("Open", f"{pv['open']:,}",
+              help="Violations not yet remediated or dismissed")
+    vc3.metric("Critical", f"{pv['critical']:,}",
+              help="Tier 1 (most severe) — structural, fire safety, lead, vermin")
 
     sev_counts = prop_viols.group_by("severity_tier").len().sort("severity_tier")
     if len(sev_counts) > 0:
@@ -478,9 +494,31 @@ def page_owner_detail(owner_id: str) -> None:
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Jurisdiction", jur_display)
-    c2.metric("Rating", f"{o_lk_color} {o_lk_label}")
-    c3.metric("Properties Managed", f"{owner_row['num_properties']:,}")
-    c4.metric("Total Violations (all properties)", f"{owner_row['total_violations']:,}")
+    c2.metric("Rating", f"{o_lk_color} {o_lk_label}",
+             help="Compares this landlord to all others in the same city")
+    c3.metric("Properties Managed", f"{owner_row['num_properties']:,}",
+             help="Distinct registered properties linked to this landlord")
+    c4.metric("Total Violations (all properties)", f"{owner_row['total_violations']:,}",
+             help="Sum of housing code violations across every property they manage")
+
+    with st.expander("What does the landlord rating mean?"):
+        st.markdown(
+            "The **landlord rating** is a composite score that compares "
+            "this owner's violation record against all other landlords "
+            "in the same jurisdiction.\n\n"
+            "It considers four factors:\n"
+            "- **Severity** — how serious the violations are\n"
+            "- **Density** — violations per residential unit\n"
+            "- **Spread** — how many of their properties have violations\n"
+            "- **Persistence** — what fraction remains unresolved\n\n"
+            "| Rating | Meaning |\n"
+            "|---|---|\n"
+            "| 🟢 Low concern | Better than ~80% of landlords |\n"
+            "| 🟡 Some concerns | Moderate violation history |\n"
+            "| 🟠 Moderate concerns | Above-average violation record |\n"
+            "| 🔴 Significant concerns | Worse than ~80% of landlords |\n"
+            "| 🔴 Severe concerns | Among the worst in the jurisdiction |"
+        )
 
     # --- Properties owned ---
     st.divider()
@@ -496,6 +534,13 @@ def page_owner_detail(owner_id: str) -> None:
     if len(owner_props) == 0:
         st.info("No linked properties found for this owner.")
     else:
+        # Column headers for properties list
+        phdr = st.columns([3, 1, 2, 1])
+        phdr[0].markdown("**Address**")
+        phdr[1].markdown("**Rating**", help="Property-level rating based on violation severity and status")
+        phdr[2].markdown("**Violations**")
+        phdr[3].markdown("")
+
         for idx, row in enumerate(owner_props.sort("address").iter_rows(named=True)):
             bbl = row["bbl"]
             addr = row["address"] or bbl
