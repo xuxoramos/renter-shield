@@ -7,183 +7,276 @@
   <meta name="description" content="Free tool from the New York Office of the Attorney General. Look up any address to see housing code violations, landlord track records, and building safety ratings across 12 U.S. cities.">
   <meta name="keywords" content="landlord check, housing violations, renter protection, tenant rights, landlord score, building safety, NYOAG, code enforcement">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary: #1a56db;
-      --primary-dark: #1e3a8a;
-      --danger: #dc2626;
-      --warning: #d97706;
-      --success: #16a34a;
-      --bg: #f8fafc;
-      --card-bg: #ffffff;
-      --text: #1e293b;
-      --muted: #64748b;
-      --border: #e2e8f0;
+      --primary: #ff4b4b;
+      --primary-hover: #ff2b2b;
+      --bg: #ffffff;
+      --secondary-bg: #f0f2f6;
+      --text: #31333f;
+      --muted: #808495;
+      --border: #d5dae5;
+      --radius: 0.5rem;
+      --font: "Source Sans 3", "Source Sans Pro", sans-serif;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: var(--font);
       color: var(--text);
       background: var(--bg);
       line-height: 1.6;
     }
-    .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
 
-    /* Hero */
-    .hero {
-      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
-      color: white;
-      padding: 4rem 0 3rem;
+    /* Streamlit-style centred column */
+    .container { max-width: 730px; margin: 0 auto; padding: 0 1rem; }
+    .wide      { max-width: 960px; }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    .header {
+      padding: 3rem 0 1rem;
       text-align: center;
     }
-    .hero h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
-    .hero .tagline { font-size: 1.25rem; opacity: 0.9; margin-bottom: 2rem; }
-    .cta-btn {
-      display: inline-block;
-      background: white;
-      color: var(--primary-dark);
-      padding: 0.9rem 2.5rem;
-      border-radius: 8px;
-      text-decoration: none;
+    .header h1 {
+      font-size: 2.25rem;
       font-weight: 700;
-      font-size: 1.1rem;
-      transition: transform 0.15s, box-shadow 0.15s;
+      margin-bottom: 0.25rem;
     }
-    .cta-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-    .hero .sub-cta {
+    .header p {
+      font-size: 1.05rem;
+      color: var(--muted);
+      margin-bottom: 1.75rem;
+    }
+
+    /* Streamlit-style button */
+    .st-btn {
+      display: inline-block;
+      background: var(--primary);
+      color: #fff;
+      padding: 0.55rem 1.5rem;
+      border-radius: var(--radius);
+      text-decoration: none;
+      font-family: var(--font);
+      font-weight: 600;
+      font-size: 1rem;
+      border: 1px solid var(--primary);
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .st-btn:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+    }
+    .st-btn-outline {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .st-btn-outline:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--bg);
+    }
+    .sub-cta {
       display: block;
-      margin-top: 0.75rem;
-      color: rgba(255,255,255,0.8);
+      margin-top: 0.6rem;
+      color: var(--muted);
       font-size: 0.85rem;
     }
 
-    /* Stats bar */
-    .stats {
-      display: flex;
-      justify-content: center;
-      gap: 3rem;
-      padding: 1.5rem 0;
-      background: var(--card-bg);
-      border-bottom: 1px solid var(--border);
+    /* ── Divider ────────────────────────────────────────────────── */
+    hr.st-hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 2rem 0;
     }
-    .stat { text-align: center; }
-    .stat .num { font-size: 1.8rem; font-weight: 700; color: var(--primary); }
-    .stat .lbl { font-size: 0.85rem; color: var(--muted); }
 
-    /* Sections */
-    section { padding: 3rem 0; }
-    section h2 { font-size: 1.75rem; margin-bottom: 1.5rem; text-align: center; }
-
-    /* How it works */
-    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; }
-    .step {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem;
+    /* ── Metric cards (st.metric style) ─────────────────────────── */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .metric {
+      background: var(--secondary-bg);
+      border-radius: var(--radius);
+      padding: 1rem 0.75rem;
       text-align: center;
     }
-    .step .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
-    .step h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
-    .step p { font-size: 0.9rem; color: var(--muted); }
-
-    /* Rating legend */
-    .ratings { max-width: 600px; margin: 0 auto; }
-    .rating-row {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 0.6rem 0;
-      border-bottom: 1px solid var(--border);
+    .metric .value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
     }
-    .rating-row:last-child { border-bottom: none; }
-    .rating-dot { font-size: 1.3rem; width: 2rem; text-align: center; }
-    .rating-label { font-weight: 600; min-width: 180px; }
-    .rating-desc { font-size: 0.9rem; color: var(--muted); }
+    .metric .label {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
 
-    /* Cities */
+    /* ── Section headings ───────────────────────────────────────── */
+    section { padding: 1rem 0; }
+    section h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Step cards ──────────────────────────────────────────────── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem;
+    }
+    .step {
+      background: var(--secondary-bg);
+      border-radius: var(--radius);
+      padding: 1.25rem 1rem;
+      text-align: center;
+    }
+    .step .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .step h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.35rem; }
+    .step p  { font-size: 0.85rem; color: var(--muted); }
+
+    /* ── Rating table ───────────────────────────────────────────── */
+    .rating-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .rating-table th {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 2px solid var(--border);
+      font-weight: 600;
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .rating-table td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .rating-table tr:last-child td { border-bottom: none; }
+    .dot { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; margin-right: 0.35rem; vertical-align: middle; }
+    .dot-green  { background: #21c354; }
+    .dot-yellow { background: #faca2b; }
+    .dot-orange { background: #ff8c00; }
+    .dot-red    { background: #ff2b2b; }
+
+    /* ── City tags ──────────────────────────────────────────────── */
     .cities-grid {
       display: flex;
       flex-wrap: wrap;
-      justify-content: center;
       gap: 0.5rem;
     }
     .city-tag {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 0.4rem 1rem;
+      background: var(--secondary-bg);
+      border-radius: var(--radius);
+      padding: 0.35rem 0.85rem;
       font-size: 0.85rem;
       color: var(--text);
+      font-weight: 600;
     }
 
-    /* FAQ */
-    .faq { max-width: 700px; margin: 0 auto; }
-    details {
-      border-bottom: 1px solid var(--border);
-      padding: 1rem 0;
+    /* ── Expander (st.expander style) ───────────────────────────── */
+    .expander {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 0.5rem;
+      overflow: hidden;
     }
-    summary {
+    .expander summary {
+      padding: 0.75rem 1rem;
       font-weight: 600;
+      font-size: 0.95rem;
       cursor: pointer;
       list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      user-select: none;
     }
-    summary::before { content: '▸ '; color: var(--primary); }
-    details[open] summary::before { content: '▾ '; }
-    details p { margin-top: 0.75rem; font-size: 0.9rem; color: var(--muted); }
+    .expander summary::-webkit-details-marker { display: none; }
+    .expander summary::before {
+      content: "▸";
+      font-size: 0.7rem;
+      color: var(--muted);
+      transition: transform 0.15s;
+      display: inline-block;
+    }
+    .expander[open] summary::before { transform: rotate(90deg); }
+    .expander .body {
+      padding: 0 1rem 0.75rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+    .expander .body a { color: var(--primary); }
 
-    /* Footer */
+    /* ── Warning banner (st.warning style) ──────────────────────── */
+    .st-warning {
+      background: #fff3cd;
+      border-left: 4px solid #faca2b;
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      font-size: 0.85rem;
+      color: #664d03;
+      margin-bottom: 1.5rem;
+    }
+
+    /* ── Footer ─────────────────────────────────────────────────── */
     footer {
-      background: var(--primary-dark);
-      color: rgba(255,255,255,0.8);
+      border-top: 1px solid var(--border);
       text-align: center;
       padding: 2rem 0;
-      font-size: 0.85rem;
-    }
-    footer a { color: rgba(255,255,255,0.9); }
-
-    /* Disclaimer banner */
-    .disclaimer {
-      max-width: 700px;
-      margin: 0 auto 2rem;
-      background: #fffbeb;
-      border: 1px solid #fcd34d;
-      border-radius: 8px;
-      padding: 1rem 1.25rem;
       font-size: 0.8rem;
-      color: #92400e;
+      color: var(--muted);
     }
+    footer a { color: var(--muted); text-decoration: underline; }
+    footer a:hover { color: var(--primary); }
 
+    /* ── Responsive ─────────────────────────────────────────────── */
     @media (max-width: 600px) {
-      .hero h1 { font-size: 1.75rem; }
-      .stats { flex-direction: column; gap: 1rem; }
-      .rating-row { flex-direction: column; gap: 0.25rem; align-items: flex-start; }
+      .header h1 { font-size: 1.6rem; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .steps  { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Hero -->
-  <header class="hero">
+  <!-- Header -->
+  <header class="header">
     <div class="container">
       <h1>🏠 Renter Shield</h1>
-      <p class="tagline">Check your landlord before you sign the lease.</p>
-      <a href="/" class="cta-btn">Look Up an Address</a>
-      <span class="sub-cta">Free with simple registration. Data from public government records.</span>
+      <p>Check your landlord before you sign the lease.</p>
+      <a href="/" class="st-btn">Look Up an Address</a>
+      <span class="sub-cta">Free with simple registration &middot; Data from public government records</span>
     </div>
   </header>
 
-  <!-- Stats -->
-  <div class="stats">
-    <div class="stat"><div class="num">12</div><div class="lbl">Cities</div></div>
-    <div class="stat"><div class="num">1.2M+</div><div class="lbl">Properties</div></div>
-    <div class="stat"><div class="num">5.9M+</div><div class="lbl">Violations Tracked</div></div>
-    <div class="stat"><div class="num">50K+</div><div class="lbl">Landlords Scored</div></div>
+  <div class="container wide">
+    <hr class="st-hr">
+
+    <!-- Metrics -->
+    <div class="metrics">
+      <div class="metric"><div class="value">12</div><div class="label">Cities</div></div>
+      <div class="metric"><div class="value">1.2M+</div><div class="label">Properties</div></div>
+      <div class="metric"><div class="value">5.9M+</div><div class="label">Violations Tracked</div></div>
+      <div class="metric"><div class="value">50K+</div><div class="label">Landlords Scored</div></div>
+    </div>
+
+    <hr class="st-hr">
   </div>
 
   <!-- How it works -->
   <section>
-    <div class="container">
+    <div class="container wide">
       <h2>How It Works</h2>
       <div class="steps">
         <div class="step">
@@ -210,39 +303,48 @@
     </div>
   </section>
 
+  <div class="container wide"><hr class="st-hr"></div>
+
   <!-- Rating legend -->
-  <section style="background: var(--card-bg); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <section>
     <div class="container">
       <h2>What the Ratings Mean</h2>
-      <div class="ratings">
-        <div class="rating-row">
-          <span class="rating-dot">🟢</span>
-          <span class="rating-label">No issues found</span>
-          <span class="rating-desc">Zero violations on record</span>
-        </div>
-        <div class="rating-row">
-          <span class="rating-dot">🟢</span>
-          <span class="rating-label">Minor issues</span>
-          <span class="rating-desc">Low-severity violations, all resolved</span>
-        </div>
-        <div class="rating-row">
-          <span class="rating-dot">🟡</span>
-          <span class="rating-label">Some concerns</span>
-          <span class="rating-desc">Open violations or moderate severity</span>
-        </div>
-        <div class="rating-row">
-          <span class="rating-dot">🟠</span>
-          <span class="rating-label">Significant issues</span>
-          <span class="rating-desc">Critical violations present</span>
-        </div>
-        <div class="rating-row">
-          <span class="rating-dot">🔴</span>
-          <span class="rating-label">Severe issues</span>
-          <span class="rating-desc">Critical violations + many unresolved</span>
-        </div>
-      </div>
+      <table class="rating-table">
+        <thead>
+          <tr><th>Rating</th><th>Level</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="dot dot-green"></span></td>
+            <td>No issues found</td>
+            <td>Zero violations on record</td>
+          </tr>
+          <tr>
+            <td><span class="dot dot-green"></span></td>
+            <td>Minor issues</td>
+            <td>Low-severity violations, all resolved</td>
+          </tr>
+          <tr>
+            <td><span class="dot dot-yellow"></span></td>
+            <td>Some concerns</td>
+            <td>Open violations or moderate severity</td>
+          </tr>
+          <tr>
+            <td><span class="dot dot-orange"></span></td>
+            <td>Significant issues</td>
+            <td>Critical violations present</td>
+          </tr>
+          <tr>
+            <td><span class="dot dot-red"></span></td>
+            <td>Severe issues</td>
+            <td>Critical violations + many unresolved</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </section>
+
+  <div class="container wide"><hr class="st-hr"></div>
 
   <!-- Cities -->
   <section>
@@ -262,53 +364,55 @@
         <span class="city-tag">Detroit</span>
         <span class="city-tag">HUD REAC (Federal — all 50 states)</span>
       </div>
-      <p style="text-align:center; margin-top:1rem; font-size:0.85rem; color:var(--muted);">
+      <p style="margin-top:0.75rem; font-size:0.85rem; color:var(--muted);">
         More cities coming. Data is updated regularly from official government open-data portals.
       </p>
     </div>
   </section>
 
+  <div class="container wide"><hr class="st-hr"></div>
+
   <!-- FAQ -->
-  <section style="background: var(--card-bg); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <section>
     <div class="container">
       <h2>Frequently Asked Questions</h2>
-      <div class="faq">
-        <details>
-          <summary>Where does the data come from?</summary>
-          <p>All data is from publicly available government open-data portals — NYC HPD, Boston ISD, Philadelphia L+I, Chicago Buildings, SF DBI, and others. Federal inspection scores come from the HUD REAC Multifamily Assisted Properties database. We don't collect or generate any data ourselves.</p>
-        </details>
-        <details>
-          <summary>Is this a legal finding?</summary>
-          <p>No. Scores are derived from algorithmic analysis of public records. They do not constitute legal findings, may not reflect current conditions, and may contain errors due to name-based ownership resolution. Always verify independently before taking action.</p>
-        </details>
-        <details>
-          <summary>How often is the data updated?</summary>
-          <p>Data is refreshed periodically from each city's open-data API. The analysis window covers January 2022 to the most recent download.</p>
-        </details>
-        <details>
-          <summary>What does "owner unknown" mean?</summary>
-          <p>Some cities (e.g. San Francisco, Seattle) don't publish landlord/owner records in their open data. In those cities, you can still see the building's violation history, but no landlord score is available.</p>
-        </details>
-        <details>
-          <summary>Can I use this in housing court?</summary>
-          <p>You can download a PDF report of any property's violation history. While the report itself is not a legal document, it summarizes public records that may support your case. Consult a tenant rights attorney or legal aid organization for guidance.</p>
-        </details>
-        <details>
-          <summary>Who built this?</summary>
-          <p>Renter Shield is a project of the New York Office of the Attorney General (NYOAG) housing investigation unit. The source code and dataset are publicly archived on <a href="https://github.com/xuxoramos/renter-shield">GitHub</a> and <a href="https://doi.org/10.5281/zenodo.19418743">Zenodo</a>.</p>
-        </details>
-      </div>
+      <details class="expander">
+        <summary>Where does the data come from?</summary>
+        <div class="body">All data is from publicly available government open-data portals — NYC HPD, Boston ISD, Philadelphia L+I, Chicago Buildings, SF DBI, and others. Federal inspection scores come from the HUD REAC Multifamily Assisted Properties database. We don't collect or generate any data ourselves.</div>
+      </details>
+      <details class="expander">
+        <summary>Is this a legal finding?</summary>
+        <div class="body">No. Scores are derived from algorithmic analysis of public records. They do not constitute legal findings, may not reflect current conditions, and may contain errors due to name-based ownership resolution. Always verify independently before taking action.</div>
+      </details>
+      <details class="expander">
+        <summary>How often is the data updated?</summary>
+        <div class="body">Data is refreshed periodically from each city's open-data API. The analysis window covers January 2022 to the most recent download.</div>
+      </details>
+      <details class="expander">
+        <summary>What does "owner unknown" mean?</summary>
+        <div class="body">Some cities (e.g. San Francisco, Seattle) don't publish landlord/owner records in their open data. In those cities, you can still see the building's violation history, but no landlord score is available.</div>
+      </details>
+      <details class="expander">
+        <summary>Can I use this in housing court?</summary>
+        <div class="body">You can download a PDF report of any property's violation history. While the report itself is not a legal document, it summarizes public records that may support your case. Consult a tenant rights attorney or legal aid organization for guidance.</div>
+      </details>
+      <details class="expander">
+        <summary>Who built this?</summary>
+        <div class="body">Renter Shield is a project of the New York Office of the Attorney General (NYOAG) housing investigation unit. The source code and dataset are publicly archived on <a href="https://github.com/xuxoramos/renter-shield">GitHub</a> and <a href="https://doi.org/10.5281/zenodo.19418743">Zenodo</a>.</div>
+      </details>
     </div>
   </section>
+
+  <div class="container wide"><hr class="st-hr"></div>
 
   <!-- Disclaimer -->
   <section>
     <div class="container">
-      <div class="disclaimer">
+      <div class="st-warning">
         <strong>Disclaimer:</strong> Scores are derived from publicly available government records and algorithmic analysis. They do not constitute legal findings, may not reflect current conditions, and may contain errors due to name-based ownership resolution. Independent verification is required before any legal, administrative, or public action.
       </div>
       <p style="text-align:center;">
-        <a href="/" class="cta-btn" style="background:var(--primary); color:white;">Look Up an Address →</a>
+        <a href="/" class="st-btn">Look Up an Address →</a>
       </p>
     </div>
   </section>
@@ -317,8 +421,8 @@
     <div class="container">
       <p>Renter Shield — New York Office of the Attorney General</p>
       <p style="margin-top:0.5rem;">
-        <a href="https://github.com/xuxoramos/renter-shield">Source Code</a> ·
-        <a href="https://doi.org/10.5281/zenodo.19418743">Dataset (Zenodo)</a> ·
+        <a href="https://github.com/xuxoramos/renter-shield">Source Code</a> &middot;
+        <a href="https://doi.org/10.5281/zenodo.19418743">Dataset (Zenodo)</a> &middot;
         <a href="/api/docs">API Documentation</a>
       </p>
     </div>
