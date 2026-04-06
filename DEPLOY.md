@@ -57,8 +57,9 @@ docker compose up -d --build
 Verify:
 ```bash
 curl http://localhost/healthz          # nginx → "ok"
-curl http://localhost/                  # Streamlit HTML
-curl -H "X-API-Key: $LI_API_KEY" http://localhost/api/jurisdictions  # API
+curl http://localhost/                  # Streamlit renter HTML
+curl http://localhost/investigator/    # Streamlit investigator HTML
+curl -H "X-API-Key: $LI_API_KEY" http://localhost/api/investigator/jurisdictions  # API
 ```
 
 ## 5. TLS with Let's Encrypt
@@ -99,10 +100,16 @@ docker compose -f deploy/docker-compose.yml restart app
 ```
 Internet → Hetzner VPS (Germany)
   ├─ :80/:443  nginx (rate-limited reverse proxy)
-  │    ├─ /          → Streamlit (:8501)  — public dashboard
-  │    └─ /api/*     → FastAPI  (:8000)   — API key required
+  │    ├─ /              → Streamlit (:8501)  — renter public dashboard
+  │    ├─ /investigator/ → Streamlit (:8502)  — investigator dashboard
+  │    └─ /api/*         → FastAPI  (:8000)   — API key required
   └─ Data:  output/all_landlords_harm_scores.parquet (mounted read-only)
 ```
+
+**Investigator Streamlit** is started with `--server.baseUrlPath investigator` so
+that it serves at `/investigator/`.  The nginx `proxy_pass http://investigator;`
+(no trailing slash) forwards the **full** `/investigator/` path unchanged to the
+Streamlit process, which is the correct form for Streamlit's baseUrlPath feature.
 
 **Jurisdictional separation**: the VPS runs in Germany (EU), data archived
 on Zenodo (Switzerland), source code on GitHub (US). No single jurisdiction

@@ -365,7 +365,7 @@ def page_property(bbl: str) -> None:
             o_lk_color = owner_row.get("likert_color", "⚪")
             # Extract display name from owner_id ("john_smith [nyc]" → "John Smith")
             display_name = owner_id.split(" [")[0].replace("_", " ").title() if owner_id else "Unknown"
-            inv_url = f"/investigator/?page=owner&owner={quote(owner_id)}"
+            inv_url = f"/investigator/?page=owner&owner={quote(owner_id, safe='')}"
             st.subheader("Landlord Track Record")
             st.markdown(f"**Owner:** [{display_name}]({inv_url}) ↗")
             oc1, oc2, oc3 = st.columns(3)
