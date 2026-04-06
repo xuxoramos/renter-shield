@@ -50,7 +50,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          ssh -i ~/.ssh/deploy_key root@"$HOST" << 'DEPLOY'
+          ssh -i ~/.ssh/deploy_key root@"$HOST" << DEPLOY
             set -e
 
             # First deploy: clone; subsequent: pull
