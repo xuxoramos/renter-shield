@@ -214,24 +214,35 @@ def page_overview() -> None:
             "properties": n_props,
         })
 
-    conf_counts = df.group_by("confidence").len().sort("confidence")
+    _CONF_ORDER = ["high", "medium", "low"]
+    conf_counts = (
+        df.group_by("confidence").len()
+        .with_columns(
+            pl.col("confidence").replace_strict(
+                {c: i for i, c in enumerate(_CONF_ORDER)}, default=99
+            ).alias("_sort")
+        )
+        .sort("_sort").drop("_sort")
+    )
 
     total_viols = df["total_violations"].sum()
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3 = st.columns(3)
     c1.metric("Jurisdictions", len(scored_jurs) + len(unscored_jurs),
              help="Cities with violation data loaded into the system")
     c2.metric("Scored owners", f"{len(df):,}",
              help="Landlords matched to properties via name and address resolution")
     c3.metric("Total violations", f"{total_viols:,}",
              help="Sum of all housing code violations across scored owners")
-    c4.markdown("**Ownership confidence**",
-                help="How reliably violations are attributed to a landlord. "
-                     "High = name + address corroborated. "
-                     "Medium = name match only. "
-                     "Low = address grouping only.")
-    for row in conf_counts.iter_rows(named=True):
+
+    st.caption(
+        "**Ownership confidence** — how reliably violations are attributed "
+        "to a landlord. High = name + address corroborated. "
+        "Medium = name match only. Low = address grouping only."
+    )
+    conf_cols = st.columns(len(conf_counts))
+    for i, row in enumerate(conf_counts.iter_rows(named=True)):
         label = CONFIDENCE_LABELS.get(row["confidence"], row["confidence"])
-        c4.metric(label, f"{row['len']:,}")
+        conf_cols[i].metric(label, f"{row['len']:,}")
 
     st.divider()
 
@@ -457,7 +468,16 @@ def page_jurisdiction(jur: str) -> None:
     c5.metric("Max score", f"{jur_df['total_harm_score'].max():,.0f}",
              help="Highest harm score among scored owners in this jurisdiction")
 
-    conf_counts = jur_df.group_by("confidence").len().sort("confidence")
+    _CONF_ORDER = ["high", "medium", "low"]
+    conf_counts = (
+        jur_df.group_by("confidence").len()
+        .with_columns(
+            pl.col("confidence").replace_strict(
+                {c: i for i, c in enumerate(_CONF_ORDER)}, default=99
+            ).alias("_sort")
+        )
+        .sort("_sort").drop("_sort")
+    )
     if len(conf_counts) > 0:
         st.caption(
             "**Ownership match confidence** — how reliably violations are "
