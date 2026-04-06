@@ -54,8 +54,8 @@ jobs:
             set -e
 
             # First deploy: clone; subsequent: pull
-            if [ ! -d /opt/renter-shield ]; then
-              git clone https://github.com/xuxoramos/renter-shield.git /opt/renter-shield
+            if [ ! -d /opt/renter-shield/.git ]; then
+              git clone https://github.com/xuxoramos/rent-shield.git /opt/renter-shield
             else
               cd /opt/renter-shield
               git fetch origin main
