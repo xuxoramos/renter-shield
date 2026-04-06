@@ -6,8 +6,8 @@ Two route namespaces served from the same data layer:
                    Responses omit internal identifiers (owner_id, confidence)
                    and score breakdowns.  Accessible by *any* valid API key.
 
-  /investigator/ — owner-centric harm-score queries for the NYOAG
-                   investigation.  Requires an API key with 'investigator'
+  /investigator/ — owner-centric harm-score queries for housing
+                   investigations.  Requires an API key with 'investigator'
                    scope.
 
 API-key format (env ``LI_API_KEYS`` or ``api_keys.txt``):
@@ -684,7 +684,7 @@ app = FastAPI(
     description=(
         "Dual-audience API for housing data.\n\n"
         "- **/renter/** — address-first property lookups for prospective tenants.\n"
-        "- **/investigator/** — owner-centric harm-score queries for the NYOAG investigation.\n\n"
+        "- **/investigator/** — owner-centric harm-score queries for housing investigations.\n\n"
         "API keys carry a scope (`renter` or `investigator`). Investigator keys "
         "can access all routes; renter keys are restricted to `/renter/` endpoints."
     ),

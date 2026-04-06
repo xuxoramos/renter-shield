@@ -227,7 +227,6 @@ with st.sidebar:
     st.subheader("Report a Problem")
     st.markdown(
         "- 🗽 **NYC**: Call 311 or [file online](https://portal.311.nyc.gov/)\n"
-        "- 🏛️ **NYOAG**: [File a housing complaint](https://ag.ny.gov/consumer-frauds-bureau/housing)\n"
         "- 📞 **HUD**: [Complaint hotline](https://www.hud.gov/topics/housing_discrimination) — 1-800-669-9777\n"
     )
 
@@ -265,8 +264,7 @@ with st.sidebar:
 
     st.divider()
     st.caption(
-        "**About Renter Shield** — A project of the New York Office of the "
-        "Attorney General. "
+        "**About Renter Shield** — An open-source public-interest project. "
         "[Source code](https://github.com/xuxoramos/renter-shield) · "
         "[Dataset](https://doi.org/10.5281/zenodo.19418743)"
     )

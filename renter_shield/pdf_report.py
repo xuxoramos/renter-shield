@@ -57,7 +57,7 @@ def generate_property_report(
     pdf.cell(0, 5, "Property Violation Report", new_x="LMARGIN", new_y="NEXT")
     pdf.cell(
         0, 5,
-        "New York Office of the Attorney General",
+        "Open-source housing transparency tool",
         new_x="LMARGIN", new_y="NEXT",
     )
     pdf.ln(3)

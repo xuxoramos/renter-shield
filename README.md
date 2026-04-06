@@ -369,7 +369,7 @@ for each covered city.
 
 ### Investigator App (`streamlit_investigator.py` — port 8502)
 
-Owner-centric harm-score explorer for the NYOAG investigation.  Full access
+Owner-centric harm-score explorer for housing investigations.  Full access
 to SVI composite, theme percentiles, legacy scores, and confidence tiers.
 Requires self-registration before access; all page views are logged to the
 audit database for accountability.

@@ -281,7 +281,7 @@ def require_registration(scope: str) -> dict[str, Any] | None:
             email = st.text_input("Email", placeholder="e.g. jane.doe@example.org")
             role = st.text_input(
                 "Role / Organisation",
-                placeholder="e.g. NYOAG Investigator, Journalist, Renter",
+                placeholder="e.g. Investigator, Journalist, Renter",
             )
             agreed = st.checkbox(
                 "I understand my access will be monitored and I will use "
