@@ -34,7 +34,7 @@ import os
 import subprocess
 import sys
 import tarfile
-from datetime import date, timezone, datetime
+from datetime import date
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -290,7 +290,7 @@ def main() -> None:
     )
     metadata = {**METADATA_TEMPLATE, "description": description}
 
-    print(f"\n[3/6] Metadata prepared")
+    print("\n[3/6] Metadata prepared")
     print(f"  Title:   {metadata['title']}")
     print(f"  Version: {metadata['version']}")
     print(f"  Files:   {', '.join(a.name for a in archives)}")
@@ -331,12 +331,12 @@ def main() -> None:
         )
 
     # 5. Upload new files
-    print(f"\n[5/6] Uploading files ...")
+    print("\n[5/6] Uploading files ...")
     for archive in archives:
         _upload_file(base_url, bucket_url, token, archive)
 
     # 6. Update metadata and publish
-    print(f"\n[6/6] Updating metadata and publishing ...")
+    print("\n[6/6] Updating metadata and publishing ...")
     _api_call(
         base_url,
         f"/deposit/depositions/{new_id}",
@@ -352,7 +352,7 @@ def main() -> None:
         method="POST",
     )
 
-    print(f"\n  Published! New version DOI will appear shortly.")
+    print("\n  Published! New version DOI will appear shortly.")
     print(f"  Concept DOI (always latest): https://doi.org/10.5281/zenodo.{CONCEPT_RECORD_ID}")
     print(f"  Direct link: {base_url.replace('/api', '')}/records/{new_id}")
 

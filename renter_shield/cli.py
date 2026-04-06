@@ -48,7 +48,6 @@ def main() -> None:
     jurisdictions = args.jurisdictions
 
     if args.download:
-        import importlib
         from renter_shield.pipeline import _load_adapter
 
         for jur in jurisdictions or list(JURISDICTION_REGISTRY):

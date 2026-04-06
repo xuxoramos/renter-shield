@@ -156,7 +156,7 @@ def compute_harm_scores(output_dir: Path) -> pl.DataFrame:
 
     # Stage 2: SVI-style composite
     result = _add_svi_composite(result)
-    print(f"SVI composite + Likert assigned")
+    print("SVI composite + Likert assigned")
 
     return result
 
@@ -205,8 +205,6 @@ def _add_svi_composite(df: pl.DataFrame) -> pl.DataFrame:
     all_components = list(dict.fromkeys(all_components))  # dedupe, preserve order
 
     # Percentile-rank within each pool
-    pctl_col_names = [f"{c}_pctl" for c in all_components]
-
     groups: list[pl.DataFrame] = []
     for pool_name, pool_df in df.group_by("_pctl_pool"):
         pctl_cols = []

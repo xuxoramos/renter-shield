@@ -27,7 +27,6 @@ from __future__ import annotations
 import json
 import urllib.request
 import urllib.parse
-from pathlib import Path
 
 import polars as pl
 

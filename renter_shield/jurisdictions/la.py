@@ -34,7 +34,6 @@ Case types and severity mapping rationale:
 from __future__ import annotations
 
 import time
-from pathlib import Path
 
 import polars as pl
 
