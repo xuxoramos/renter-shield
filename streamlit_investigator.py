@@ -66,7 +66,7 @@ JURISDICTION_DISPLAY = {
 # Data loading (cached)
 # ---------------------------------------------------------------------------
 
-@st.cache_data
+@st.cache_data(ttl=3600, max_entries=1)
 def load_scores() -> pl.DataFrame:
     if not SCORES_FILE.exists():
         st.error(f"Scores file not found: {SCORES_FILE}. Run the pipeline first.")
@@ -80,14 +80,14 @@ PROPERTIES_FILE = OUTPUT_DIR / "properties.parquet"
 VIOLATIONS_FILE = OUTPUT_DIR / "violations.parquet"
 
 
-@st.cache_data
+@st.cache_data(ttl=3600, max_entries=1)
 def load_properties() -> pl.DataFrame:
     if not PROPERTIES_FILE.exists():
         return pl.DataFrame()
     return pl.read_parquet(PROPERTIES_FILE)
 
 
-@st.cache_data
+@st.cache_data(ttl=3600, max_entries=1)
 def load_violations() -> pl.DataFrame:
     if not VIOLATIONS_FILE.exists():
         return pl.DataFrame()

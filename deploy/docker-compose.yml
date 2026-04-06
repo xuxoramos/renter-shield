@@ -2,6 +2,12 @@ services:
   app:
     build: ..
     restart: unless-stopped
+    # Memory guard: keep the app container within 7 GB so the host OS
+    # and nginx still have room on an 8 GB VPS.  The extra 1 GB swap
+    # cushion (memswap_limit - mem_limit) absorbs short spikes without
+    # triggering the OOM killer.
+    mem_limit: 7168m
+    memswap_limit: 8192m
     environment:
       - LI_OUTPUT_DIR=/app/output
       - LI_API_KEYS=${LI_API_KEYS:-changeme}
