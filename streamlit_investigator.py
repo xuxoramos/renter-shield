@@ -287,21 +287,36 @@ def page_overview() -> None:
         if len(matches) == 0:
             st.info("No matches found.")
         else:
-            st.write(f"**{len(matches)}** results (showing top 50)")
-            for row in matches.iter_rows(named=True):
-                conf = CONFIDENCE_LABELS.get(row["confidence"], row["confidence"])
-                jur_display = JURISDICTION_DISPLAY.get(row["jurisdiction"], row["jurisdiction"])
-                cols = st.columns([4, 2, 2, 2, 1])
-                cols[0].write(f"**{row['owner_id']}**")
-                cols[1].write(jur_display)
-                cols[2].write(f"Score: {row['total_harm_score']:,.0f}")
-                cols[3].write(conf)
-                cols[4].button(
-                    "→",
-                    key=f"search_{row['owner_id']}",
-                    on_click=nav_link_owner,
-                    args=(row["owner_id"],),
-                )
+            st.write(f"**{len(matches)}** results (showing top 50) — click a row to view details")
+
+            search_display = matches.select(
+                pl.col("owner_id").alias("Owner"),
+                pl.col("jurisdiction").replace(JURISDICTION_DISPLAY).alias("Jurisdiction"),
+                pl.col("total_harm_score").alias("Harm Score"),
+                pl.col("confidence").replace(CONFIDENCE_LABELS).alias("Confidence"),
+            ).to_pandas()
+
+            event = st.dataframe(
+                search_display,
+                column_config={
+                    "Harm Score": st.column_config.NumberColumn(
+                        "Harm Score",
+                        help="Weighted composite of severity, density, spread, and persistence",
+                        format="%.0f",
+                    ),
+                },
+                hide_index=True,
+                on_select="rerun",
+                selection_mode="single-row",
+                key="global_search_table",
+                use_container_width=True,
+            )
+
+            if event.selection.rows:
+                selected_owner = matches["owner_id"][event.selection.rows[0]]
+                nav_link_owner(selected_owner)
+                del st.session_state["global_search_table"]
+                st.rerun()
 
     with st.expander("📖 Methodology"):
         _render_methodology()
@@ -380,16 +395,19 @@ def page_jurisdiction(jur: str) -> None:
                 st.info("No matching addresses.")
             else:
                 st.write(f"**{len(addr_matches)}** results (up to 100)")
+                addr_rows = []
                 for row in addr_matches.iter_rows(named=True):
                     bbl = row["bbl"]
                     addr = row["address"] or "(no address)"
                     pv = jur_viols.filter(pl.col("bbl") == bbl) if n_viols else pl.DataFrame()
                     nv = len(pv)
                     nc = len(pv.filter(pl.col("severity_tier") == 1)) if nv else 0
-                    cols = st.columns([4, 2, 2])
-                    cols[0].write(f"**{addr}**")
-                    cols[1].write(f"{nv:,} violations")
-                    cols[2].write(f"{nc:,} critical" if nc else "—")
+                    addr_rows.append({"Address": addr, "Violations": nv, "Critical": nc})
+                st.dataframe(
+                    pl.DataFrame(addr_rows),
+                    hide_index=True,
+                    use_container_width=True,
+                )
         return
 
     # --- scored jurisdiction (original logic) ---
@@ -460,6 +478,7 @@ def page_jurisdiction(jur: str) -> None:
         st.bar_chart(chart_df.to_pandas(), x="Score range", y="Owners")
 
     st.subheader("Ranked Owners")
+    st.caption("Click a row to view owner details.")
     page_size = 25
     total_pages = max((len(filtered) + page_size - 1) // page_size, 1)
     tbl_page = st.number_input("Page", min_value=1, max_value=total_pages, value=1, key="tbl_page")
@@ -467,33 +486,50 @@ def page_jurisdiction(jur: str) -> None:
 
     page_df = filtered.slice(start, page_size)
 
-    # Column headers
-    hdr = st.columns([4, 1, 1, 2, 2, 2, 1])
-    hdr[0].markdown("**Owner**")
-    hdr[1].markdown("**Confidence**", help="How reliably violations are attributed to this landlord")
-    hdr[2].markdown("**Rating**", help="Comparative rating within the jurisdiction (SVI-based)")
-    hdr[3].markdown("**Harm Score**", help="Weighted composite of severity, density, spread, and persistence")
-    hdr[4].markdown("**Portfolio**")
-    hdr[5].markdown("**Violations**")
-    hdr[6].markdown("")
+    display_df = page_df.select(
+        pl.col("owner_id").alias("Owner"),
+        pl.col("confidence").replace(CONFIDENCE_LABELS).alias("Confidence"),
+        (pl.col("likert_color").fill_null("") + pl.lit(" ") + pl.col("likert_label").fill_null("")).alias("Rating"),
+        pl.col("total_harm_score").alias("Harm Score"),
+        pl.col("num_properties").alias("Properties"),
+        pl.col("total_violations").alias("Violations"),
+        pl.col("class_c_violations").alias("Critical"),
+        pl.col("unresolved_violations").alias("Open"),
+    ).to_pandas()
 
-    for row in page_df.iter_rows(named=True):
-        conf_badge = CONFIDENCE_LABELS.get(row["confidence"], row["confidence"])
-        lk_color = row.get("likert_color", "")
-        lk_label = row.get("likert_label", "")
-        cols = st.columns([4, 1, 1, 2, 2, 2, 1])
-        cols[0].write(f"**{row['owner_id']}**")
-        cols[1].write(conf_badge)
-        cols[2].write(f"{lk_color} {lk_label}")
-        cols[3].write(f"Score: **{row['total_harm_score']:,.0f}**")
-        cols[4].write(f"{row['num_properties']} props · {row['total_violations']:,} violations")
-        cols[5].write(f"{row['class_c_violations']:,} critical · {row['unresolved_violations']:,} open")
-        cols[6].button(
-            "Details",
-            key=f"detail_{row['owner_id']}",
-            on_click=nav_link_owner,
-            args=(row["owner_id"],),
-        )
+    max_score = float(filtered["total_harm_score"].max()) if len(filtered) > 0 else 1.0
+
+    event = st.dataframe(
+        display_df,
+        column_config={
+            "Harm Score": st.column_config.ProgressColumn(
+                "Harm Score",
+                help="Weighted composite of severity, density, spread, and persistence",
+                min_value=0,
+                max_value=max_score,
+                format="%.0f",
+            ),
+            "Confidence": st.column_config.TextColumn(
+                "Confidence",
+                help="How reliably violations are attributed to this landlord",
+            ),
+            "Rating": st.column_config.TextColumn(
+                "Rating",
+                help="Comparative rating within the jurisdiction (SVI-based)",
+            ),
+        },
+        hide_index=True,
+        on_select="rerun",
+        selection_mode="single-row",
+        key="ranked_owners_table",
+        use_container_width=True,
+    )
+
+    if event.selection.rows:
+        selected_owner = page_df["owner_id"][event.selection.rows[0]]
+        nav_link_owner(selected_owner)
+        del st.session_state["ranked_owners_table"]
+        st.rerun()
 
 
 # =========================================================================

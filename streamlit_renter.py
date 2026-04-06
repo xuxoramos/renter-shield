@@ -267,15 +267,10 @@ def page_address_search() -> None:
 
     st.write(f"**{len(matches)}** matching properties (showing up to 100)")
 
-    # Column headers for search results
-    hdr = st.columns([3, 2, 1, 2, 2, 1])
-    hdr[0].markdown("**Address**")
-    hdr[1].markdown("**City**")
-    hdr[2].markdown("**Rating**", help="Property-level rating based on violation severity and status")
-    hdr[3].markdown("**Violations**")
-    hdr[4].markdown("**Owner**")
-    hdr[5].markdown("")
+    st.caption("Click a row to view property details.")
 
+    search_rows = []
+    bbl_list = []
     for row in matches.iter_rows(named=True):
         bbl = row["bbl"]
         jur = row["jurisdiction"]
@@ -283,37 +278,48 @@ def page_address_search() -> None:
         jur_display = JURISDICTION_DISPLAY.get(jur, jur.title())
 
         prop_viols = viols_df.filter(pl.col("bbl") == bbl)
-        n_viols = len(prop_viols)
-        n_critical = len(prop_viols.filter(pl.col("severity_tier") == 1))
-        n_open = len(prop_viols.filter(pl.col("status") == "open"))
         pv_stats = _property_violation_score(prop_viols)
 
-        # Simplified owner signal — no owner_id exposed
         reg_id = row.get("registration_id")
         owner_match = owner_reg_df.filter(pl.col("registration_id") == reg_id) if reg_id else pl.DataFrame()
-        owner_id = owner_match["owner_id"][0] if len(owner_match) > 0 else None
-        owner_label = "Owner on file" if owner_id else "Owner: not available"
+        owner_label = "Owner on file" if len(owner_match) > 0 else "Not available"
 
-        # Likert rating for this property
         lk_level, lk_label, lk_color = _property_likert(pv_stats)
 
-        cols = st.columns([3, 2, 1, 2, 2, 1])
-        cols[0].write(f"**{addr}**")
-        cols[1].write(f"📍 {jur_display}")
-        cols[2].write(f"{lk_color} **{lk_label}**")
-        viol_text = f"{n_viols:,} violations"
-        if n_critical > 0:
-            viol_text += f" · 🔴 {n_critical} critical"
-        if n_open > 0:
-            viol_text += f" · {n_open} open"
-        cols[3].write(viol_text)
-        cols[4].caption(owner_label)
-        cols[5].button(
-            "Details",
-            key=f"prop_{bbl}",
-            on_click=nav_link_property,
-            args=(bbl,),
-        )
+        search_rows.append({
+            "Address": addr,
+            "City": jur_display,
+            "Rating": f"{lk_color} {lk_label}",
+            "Violations": pv_stats["total"],
+            "Critical": pv_stats["critical"],
+            "Open": pv_stats["open"],
+            "Owner": owner_label,
+        })
+        bbl_list.append(bbl)
+
+    event = st.dataframe(
+        search_rows,
+        column_config={
+            "Rating": st.column_config.TextColumn(
+                "Rating",
+                help="Property-level rating based on violation severity and status",
+            ),
+            "Violations": st.column_config.NumberColumn("Violations", format="%d"),
+            "Critical": st.column_config.NumberColumn("Critical", format="%d"),
+            "Open": st.column_config.NumberColumn("Open", format="%d"),
+        },
+        hide_index=True,
+        on_select="rerun",
+        selection_mode="single-row",
+        key="addr_search_table",
+        use_container_width=True,
+    )
+
+    if event.selection.rows:
+        selected_bbl = bbl_list[event.selection.rows[0]]
+        nav_link_property(selected_bbl)
+        del st.session_state["addr_search_table"]
+        st.rerun()
 
 
 # =========================================================================
@@ -534,38 +540,49 @@ def page_owner_detail(owner_id: str) -> None:
     if len(owner_props) == 0:
         st.info("No linked properties found for this owner.")
     else:
-        # Column headers for properties list
-        phdr = st.columns([3, 1, 2, 1])
-        phdr[0].markdown("**Address**")
-        phdr[1].markdown("**Rating**", help="Property-level rating based on violation severity and status")
-        phdr[2].markdown("**Violations**")
-        phdr[3].markdown("")
+        st.caption("Click a row to view property details.")
 
-        for idx, row in enumerate(owner_props.sort("address").iter_rows(named=True)):
+        prop_rows = []
+        prop_bbls = []
+        for row in owner_props.sort("address").iter_rows(named=True):
             bbl = row["bbl"]
             addr = row["address"] or bbl
             prop_viols = viols_df.filter(pl.col("bbl") == bbl)
-            n_viols = len(prop_viols)
-            n_critical = len(prop_viols.filter(pl.col("severity_tier") == 1))
-            n_open = len(prop_viols.filter(pl.col("status") == "open"))
             pv_stats = _property_violation_score(prop_viols)
             lk_level, lk_label, lk_color = _property_likert(pv_stats)
 
-            cols = st.columns([3, 1, 2, 1])
-            cols[0].write(f"**{addr}**")
-            cols[1].write(f"{lk_color} **{lk_label}**")
-            viol_text = f"{n_viols:,} violations"
-            if n_critical > 0:
-                viol_text += f" · 🔴 {n_critical} critical"
-            if n_open > 0:
-                viol_text += f" · {n_open} open"
-            cols[2].write(viol_text)
-            cols[3].button(
-                "Details",
-                key=f"owner_prop_{bbl}_{idx}",
-                on_click=nav_link_property,
-                args=(bbl,),
-            )
+            prop_rows.append({
+                "Address": addr,
+                "Rating": f"{lk_color} {lk_label}",
+                "Violations": pv_stats["total"],
+                "Critical": pv_stats["critical"],
+                "Open": pv_stats["open"],
+            })
+            prop_bbls.append(bbl)
+
+        event = st.dataframe(
+            prop_rows,
+            column_config={
+                "Rating": st.column_config.TextColumn(
+                    "Rating",
+                    help="Property-level rating based on violation severity and status",
+                ),
+                "Violations": st.column_config.NumberColumn("Violations", format="%d"),
+                "Critical": st.column_config.NumberColumn("Critical", format="%d"),
+                "Open": st.column_config.NumberColumn("Open", format="%d"),
+            },
+            hide_index=True,
+            on_select="rerun",
+            selection_mode="single-row",
+            key="owner_props_table",
+            use_container_width=True,
+        )
+
+        if event.selection.rows:
+            selected_bbl = prop_bbls[event.selection.rows[0]]
+            nav_link_property(selected_bbl)
+            del st.session_state["owner_props_table"]
+            st.rerun()
 
 
 # =========================================================================
