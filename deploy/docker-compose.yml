@@ -8,6 +8,8 @@ services:
     volumes:
       # Mount scored data at runtime (alternative to baking it into the image)
       - ../output:/app/output:ro
+      # Persist audit DB (user tokens/sessions) across redeploys
+      - app-logs:/app/logs
     expose:
       - "8000"
       - "8501"
@@ -25,3 +27,6 @@ services:
       # - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - app
+
+volumes:
+  app-logs:
