@@ -3,17 +3,15 @@
 These tests use FastAPI's TestClient which bypasses nginx; they confirm that
 the routes are registered and gated by authentication (401), not missing (404).
 
-The 404 bug: the renter app's address-detail view links owners to
-  /investigator/?page=owner&owner=<id>
-which nginx proxies to the investigator Streamlit (port 8502).  If that
-Streamlit process is NOT running with --server.baseUrlPath investigator
-it returns 404 for any path under /investigator/.
+The renter app's address-detail view now links owners to its own
+``?page=owner&owner=<id>`` page (handled within the renter Streamlit) instead
+of cross-linking to the investigator Streamlit at ``/investigator/``, which
+previously returned 404 when the investigator process was unavailable or
+when the user lacked investigator-level access.
 
-The FastAPI side of the investigator router likewise returns 404 for the
-base path /investigator/ because no explicit handler is registered there.
-The tests below document both the existing sub-routes (should be 401) and the
-behaviour of the bare prefix path (should be 404 from FastAPI — callers must
-use nginx, which routes /investigator/ to Streamlit, not FastAPI).
+The FastAPI ``/investigator/`` prefix still has no root handler (only
+sub-routes like ``/investigator/jurisdictions``).  Tests below verify that
+sub-routes are auth-gated (401) rather than missing (404).
 """
 
 from urllib.parse import quote, unquote
@@ -88,10 +86,6 @@ def test_investigator_landlords_by_id_exists():
     This verifies the FastAPI route exists and is auth-gated (401), not missing
     (404).  In the production deployment callers reach this endpoint at
     GET /api/investigator/landlords/{owner_id} (nginx strips the /api/ prefix).
-
-    The renter app's address-detail view links owners to the *Streamlit* UI at
-    /investigator/?page=owner&owner={owner_id} (handled by the investigator
-    Streamlit, not this FastAPI route), but both paths must not 404.
     """
     resp = client.get("/investigator/landlords/john_smith%20%5Bnyc%5D")
     assert resp.status_code == 401, (
@@ -105,11 +99,12 @@ def test_investigator_landlords_by_id_exists():
 # ---------------------------------------------------------------------------
 
 def test_owner_link_url_encoding():
-    """The renter app builds the investigator link with quote(owner_id, safe='').
+    """Verify that owner IDs with special characters survive percent-encoding.
 
-    Verify that all special characters that appear in owner IDs are correctly
-    percent-encoded so the URL is unambiguous, and that the encoding round-trips
-    back to the original value.
+    The investigator Streamlit (and the FastAPI landlords endpoint) receive
+    owner IDs via URL query parameters or path segments.  This test confirms
+    that ``quote(owner_id, safe='')`` round-trips losslessly for representative
+    owner ID formats.
     """
     owner_ids = [
         "john_smith [nyc]",

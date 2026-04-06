@@ -12,7 +12,6 @@ Expects Parquet files in ``output/`` (produced by the pipeline).
 
 import os
 from pathlib import Path
-from urllib.parse import quote
 
 import polars as pl
 import streamlit as st
@@ -191,6 +190,7 @@ if _audit_user is None:
 # ---------------------------------------------------------------------------
 page = st.query_params.get("page", "address")
 nav_bbl = st.query_params.get("bbl", None)
+nav_owner = st.query_params.get("owner", None)
 
 
 def nav_link_address(keep_query: bool = False) -> None:
@@ -211,6 +211,15 @@ def nav_link_back_to_results() -> None:
 def nav_link_property(bbl: str) -> None:
     st.query_params["page"] = "property"
     st.query_params["bbl"] = bbl
+    if "owner" in st.query_params:
+        del st.query_params["owner"]
+
+
+def nav_link_owner(owner_id: str) -> None:
+    st.query_params["page"] = "owner"
+    st.query_params["owner"] = owner_id
+    if "bbl" in st.query_params:
+        del st.query_params["bbl"]
 
 
 # =========================================================================
@@ -365,9 +374,13 @@ def page_property(bbl: str) -> None:
             o_lk_color = owner_row.get("likert_color", "⚪")
             # Extract display name from owner_id ("john_smith [nyc]" → "John Smith")
             display_name = owner_id.split(" [")[0].replace("_", " ").title() if owner_id else "Unknown"
-            inv_url = f"/investigator/?page=owner&owner={quote(owner_id, safe='')}"
             st.subheader("Landlord Track Record")
-            st.markdown(f"**Owner:** [{display_name}]({inv_url}) ↗")
+            st.button(
+                f"🔍 {display_name} — View full track record",
+                on_click=nav_link_owner,
+                args=(owner_id,),
+                key="owner_link",
+            )
             oc1, oc2, oc3 = st.columns(3)
             oc1.metric("Rating", f"{o_lk_color} {o_lk_label}")
             oc2.metric("Properties Managed", f"{owner_row['num_properties']:,}")
@@ -421,11 +434,83 @@ def page_property(bbl: str) -> None:
 
 
 # =========================================================================
+# PAGE: Owner Detail (simplified for renters)
+# =========================================================================
+def page_owner_detail(owner_id: str) -> None:
+    score_match = df.filter(pl.col("owner_id") == owner_id) if len(df) > 0 else df.clear()
+
+    if len(score_match) == 0:
+        st.error(f"Owner not found: {owner_id}")
+        st.button("← Search another address", on_click=nav_link_address, key="bc_addr")
+        return
+
+    owner_row = score_match.row(0, named=True)
+    jur = owner_row.get("jurisdiction", "")
+    jur_display = JURISDICTION_DISPLAY.get(jur, jur.title())
+    display_name = owner_id.split(" [")[0].replace("_", " ").title() if owner_id else "Unknown"
+    o_lk_label = owner_row.get("likert_label", "Unknown")
+    o_lk_color = owner_row.get("likert_color", "⚪")
+
+    st.button("← Search another address", on_click=nav_link_address, key="bc_addr")
+    st.title(f"🏠 Landlord: {display_name}")
+    st.caption(DISCLAIMER)
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Jurisdiction", jur_display)
+    c2.metric("Rating", f"{o_lk_color} {o_lk_label}")
+    c3.metric("Properties Managed", f"{owner_row['num_properties']:,}")
+    c4.metric("Total Violations (all properties)", f"{owner_row['total_violations']:,}")
+
+    # --- Properties owned ---
+    st.divider()
+    st.subheader("Properties")
+
+    owner_regs = owner_reg_df.filter(pl.col("owner_id") == owner_id)
+    if len(owner_regs) > 0:
+        reg_ids = owner_regs["registration_id"].to_list()
+        owner_props = props_df.filter(pl.col("registration_id").is_in(reg_ids))
+    else:
+        owner_props = props_df.clear()
+
+    if len(owner_props) == 0:
+        st.info("No linked properties found for this owner.")
+    else:
+        for row in owner_props.sort("address").iter_rows(named=True):
+            bbl = row["bbl"]
+            addr = row["address"] or bbl
+            prop_viols = viols_df.filter(pl.col("bbl") == bbl)
+            n_viols = len(prop_viols)
+            n_critical = len(prop_viols.filter(pl.col("severity_tier") == 1))
+            n_open = len(prop_viols.filter(pl.col("status") == "open"))
+            pv_stats = _property_violation_score(prop_viols)
+            lk_level, lk_label, lk_color = _property_likert(pv_stats)
+
+            cols = st.columns([3, 1, 2, 1])
+            cols[0].write(f"**{addr}**")
+            cols[1].write(f"{lk_color} **{lk_label}**")
+            viol_text = f"{n_viols:,} violations"
+            if n_critical > 0:
+                viol_text += f" · 🔴 {n_critical} critical"
+            if n_open > 0:
+                viol_text += f" · {n_open} open"
+            cols[2].write(viol_text)
+            cols[3].button(
+                "Details",
+                key=f"owner_prop_{bbl}",
+                on_click=nav_link_property,
+                args=(bbl,),
+            )
+
+
+# =========================================================================
 # Router
 # =========================================================================
 if page == "property" and nav_bbl:
     log_page_view(_audit_user["id"], "renter", "property", {"bbl": nav_bbl})
     page_property(nav_bbl)
+elif page == "owner" and nav_owner:
+    log_page_view(_audit_user["id"], "renter", "owner", {"owner": nav_owner})
+    page_owner_detail(nav_owner)
 else:
     log_page_view(_audit_user["id"], "renter", "address_search")
     page_address_search()
