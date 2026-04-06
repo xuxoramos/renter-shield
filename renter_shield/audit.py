@@ -236,56 +236,79 @@ def require_registration(scope: str) -> dict[str, Any] | None:
     # Show registration form
     st.title("🔐 Access Registration")
 
-    if scope == "investigator":
-        st.markdown(
-            "This tool contains investigator-level data including owner "
-            "identities, confidence tiers, and detailed score breakdowns. "
-            "By registering, you agree that:\n\n"
-            "- You will use this data only for legitimate investigative "
-            "or research purposes.\n"
-            "- You understand scores are algorithmic estimates and require "
-            "independent verification.\n"
-            "- Your access will be logged for audit purposes."
-        )
-    else:
-        st.markdown(
-            "Register to access property violation data. Your access will "
-            "be logged for quality and security purposes."
-        )
+    tab_register, tab_token = st.tabs(["New registration", "I have a token"])
 
-    with st.form("registration_form"):
-        name = st.text_input("Full name", placeholder="e.g. Jane Doe")
-        email = st.text_input("Email", placeholder="e.g. jane.doe@example.org")
-        role = st.text_input(
-            "Role / Organisation",
-            placeholder="e.g. NYOAG Investigator, Journalist, Renter",
+    with tab_token:
+        token_input = st.text_input(
+            "Paste your token",
+            type="password",
+            placeholder="e.g. a1b2c3d4...",
+            key="_audit_token_input",
         )
-        agreed = st.checkbox(
-            "I understand my access will be monitored and I will use "
-            "this data responsibly."
-        )
-        submitted = st.form_submit_button("Register & Continue")
+        if st.button("Sign in", key="_audit_token_submit"):
+            if token_input:
+                user = validate_token(token_input.strip())
+                if user and user.get("scope") == scope:
+                    st.session_state[session_key] = user
+                    st.rerun()
+                elif user:
+                    st.error(f"This token is for **{user['scope']}** access, not **{scope}**.")
+                else:
+                    st.error("Invalid or expired token.")
+            else:
+                st.error("Please paste your token.")
 
-    if submitted:
-        if not name or not email or not agreed:
-            st.error("Please fill in your name, email, and agree to the terms.")
-            return None
-        if "@" not in email or "." not in email.split("@")[-1]:
-            st.error("Please enter a valid email address.")
-            return None
+    with tab_register:
+        if scope == "investigator":
+            st.markdown(
+                "This tool contains investigator-level data including owner "
+                "identities, confidence tiers, and detailed score breakdowns. "
+                "By registering, you agree that:\n\n"
+                "- You will use this data only for legitimate investigative "
+                "or research purposes.\n"
+                "- You understand scores are algorithmic estimates and require "
+                "independent verification.\n"
+                "- Your access will be logged for audit purposes."
+            )
+        else:
+            st.markdown(
+                "Register to access property violation data. Your access will "
+                "be logged for quality and security purposes."
+            )
 
-        user = register_user(name=name, email=email, role=role, scope=scope)
-        st.session_state[session_key] = user
+        with st.form("registration_form"):
+            name = st.text_input("Full name", placeholder="e.g. Jane Doe")
+            email = st.text_input("Email", placeholder="e.g. jane.doe@example.org")
+            role = st.text_input(
+                "Role / Organisation",
+                placeholder="e.g. NYOAG Investigator, Journalist, Renter",
+            )
+            agreed = st.checkbox(
+                "I understand my access will be monitored and I will use "
+                "this data responsibly."
+            )
+            submitted = st.form_submit_button("Register & Continue")
 
-        # Show token for API access
-        st.success("✅ Registered! You now have access.")
-        st.info(
-            f"**Your API token** (use as `X-API-Key` header for API calls):\n\n"
-            f"`{user['token']}`\n\n"
-            f"Save this — it won't be shown again. "
-            f"Expires after {SESSION_EXPIRY_DAYS} days."
-        )
-        st.button("Continue to app →", key="_audit_continue")
-        return None  # Let user see the token before proceeding
+        if submitted:
+            if not name or not email or not agreed:
+                st.error("Please fill in your name, email, and agree to the terms.")
+                return None
+            if "@" not in email or "." not in email.split("@")[-1]:
+                st.error("Please enter a valid email address.")
+                return None
+
+            user = register_user(name=name, email=email, role=role, scope=scope)
+            st.session_state[session_key] = user
+
+            # Show token for API access
+            st.success("✅ Registered! You now have access.")
+            st.info(
+                f"**Your API token** (use as `X-API-Key` header for API calls):\n\n"
+                f"`{user['token']}`\n\n"
+                f"Save this — it won't be shown again. "
+                f"Expires after {SESSION_EXPIRY_DAYS} days."
+            )
+            st.button("Continue to app →", key="_audit_continue")
+            return None  # Let user see the token before proceeding
 
     return None
