@@ -12,6 +12,7 @@ dependencies = [
     "duckdb>=1.0",
     "fastapi>=0.110",
     "uvicorn>=0.29",
+    "fpdf2>=2.8",
 ]
 
 [project.optional-dependencies]

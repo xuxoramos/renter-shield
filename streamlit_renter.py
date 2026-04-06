@@ -17,6 +17,7 @@ import polars as pl
 import streamlit as st
 
 from renter_shield.audit import require_registration, log_page_view
+from renter_shield.pdf_report import generate_property_report
 
 # ---------------------------------------------------------------------------
 # Config
@@ -212,6 +213,63 @@ owner_reg_df = load_owner_registrations()
 _audit_user = require_registration("renter")
 if _audit_user is None:
     st.stop()
+
+# ---------------------------------------------------------------------------
+# Know Your Rights — persistent sidebar
+# ---------------------------------------------------------------------------
+with st.sidebar:
+    st.header("📋 Know Your Rights")
+    st.markdown(
+        "Every tenant deserves safe housing. If you're having problems "
+        "with your landlord, these resources can help."
+    )
+
+    st.subheader("Report a Problem")
+    st.markdown(
+        "- 🗽 **NYC**: Call 311 or [file online](https://portal.311.nyc.gov/)\n"
+        "- 🏛️ **NYOAG**: [File a housing complaint](https://ag.ny.gov/consumer-frauds-bureau/housing)\n"
+        "- 📞 **HUD**: [Complaint hotline](https://www.hud.gov/topics/housing_discrimination) — 1-800-669-9777\n"
+    )
+
+    st.subheader("Tenant Rights by City")
+    with st.expander("New York City"):
+        st.markdown(
+            "- [Tenant protection laws (HPD)](https://www.nyc.gov/site/hpd/renters/tenant-rights.page)\n"
+            "- [Right to Counsel (free attorney)](https://www.righttocounselnyc.org/)\n"
+            "- [Met Council on Housing hotline](https://www.metcouncilonhousing.org/) — 212-979-0611\n"
+        )
+    with st.expander("Boston"):
+        st.markdown(
+            "- [Boston Inspectional Services](https://www.boston.gov/departments/inspectional-services)\n"
+            "- [City of Boston tenant rights](https://www.boston.gov/housing/tenant-rights)\n"
+            "- [Greater Boston Legal Services](https://www.gbls.org/)\n"
+        )
+    with st.expander("Philadelphia"):
+        st.markdown(
+            "- [Philly Tenant Hotline](https://www.phillytenant.org/) — 267-443-2500\n"
+            "- [Community Legal Services](https://clsphila.org/)\n"
+            "- [L&I complaints](https://www.phila.gov/departments/department-of-licenses-and-inspections/)\n"
+        )
+    with st.expander("Chicago"):
+        st.markdown(
+            "- [Chicago RLTO (tenant ordinance)](https://www.chicago.gov/city/en/depts/doh/provdrs/renters/svcs/rents-right.html)\n"
+            "- [Metropolitan Tenants Organization](https://www.tenants-rights.org/)\n"
+            "- [LAF (Legal Aid)](https://www.lafchicago.org/)\n"
+        )
+    with st.expander("Other cities"):
+        st.markdown(
+            "- [HUD tenant rights (national)](https://www.hud.gov/topics/rental_assistance/tenantrights)\n"
+            "- [LawHelp.org — find free legal aid](https://www.lawhelp.org/)\n"
+            "- [National Housing Law Project](https://www.nhlp.org/)\n"
+        )
+
+    st.divider()
+    st.caption(
+        "**About Renter Shield** — A project of the New York Office of the "
+        "Attorney General. "
+        "[Source code](https://github.com/xuxoramos/renter-shield) · "
+        "[Dataset](https://doi.org/10.5281/zenodo.19418743)"
+    )
 
 # ---------------------------------------------------------------------------
 # Navigation
@@ -501,6 +559,56 @@ def page_property(bbl: str) -> None:
         display_viols.slice((viol_page - 1) * page_size, page_size).to_pandas(),
         width="stretch",
         hide_index=True,
+    )
+
+    # --- PDF download ---
+    st.divider()
+    _pdf_owner_name = None
+    _pdf_owner_rating = None
+    _pdf_owner_props = None
+    _pdf_owner_viols = None
+    if len(owner_match) > 0:
+        _oid = owner_match["owner_id"][0]
+        _smatch = df.filter(pl.col("owner_id") == _oid) if len(df) > 0 else pl.DataFrame()
+        if len(_smatch) > 0:
+            _orow = _smatch.row(0, named=True)
+            _pdf_owner_name = _oid.split(" [")[0].replace("_", " ").title()
+            _pdf_owner_rating = f"{_orow.get('likert_color', '')} {_orow.get('likert_label', '')}".strip()
+            _pdf_owner_props = _orow["num_properties"]
+            _pdf_owner_viols = _orow["total_violations"]
+
+    viol_rows = [
+        {
+            "date": str(r["inspection_date"]) if r["inspection_date"] else "",
+            "severity": SEVERITY_LABELS.get(r["severity_tier"], "Unknown"),
+            "status": (r["status"] or "").title(),
+            "violation_id": r.get("violation_id", ""),
+        }
+        for r in prop_viols.iter_rows(named=True)
+    ]
+
+    pdf_bytes = generate_property_report(
+        address=addr,
+        jurisdiction=jur_display,
+        rating_label=f"{lk_color} {lk_label}",
+        units=f"{units:,.0f}" if units else "Unknown",
+        year_built=yb or "Unknown",
+        total_violations=pv["total"],
+        critical=pv["critical"],
+        open_violations=pv["open"],
+        open_pct=pv["open_pct"],
+        owner_name=_pdf_owner_name,
+        owner_rating=_pdf_owner_rating,
+        owner_properties=_pdf_owner_props,
+        owner_total_violations=_pdf_owner_viols,
+        violations=viol_rows,
+    )
+    safe_name = addr.replace(" ", "_").replace(",", "")[:50]
+    st.download_button(
+        "📄 Download Property Report (PDF)",
+        data=pdf_bytes,
+        file_name=f"renter_shield_{safe_name}.pdf",
+        mime="application/pdf",
     )
 
 
