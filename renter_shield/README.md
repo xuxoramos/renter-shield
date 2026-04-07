@@ -209,7 +209,7 @@ investigators who need immediate access.
   programmatic access via the `X-API-Key` header.
 - All page views (Streamlit) and API calls (FastAPI) are logged with
   user ID, path, and timestamp to `logs/audit.db` (SQLite).
-- Tokens expire after 7 days (`LI_SESSION_EXPIRY_DAYS`), after which the
+- Tokens expire after 90 days (`LI_SESSION_EXPIRY_DAYS`), after which the
   user must re-register.
 
 ### Why SQLite?

@@ -395,7 +395,7 @@ sources:
    to `investigator`).
 2. **Self-registration** — users who register via either Streamlit app
    receive a UUID token that also works as an API key.  Tokens are stored
-   in `logs/audit.db` (SQLite) and expire after 7 days (configurable via
+   in `logs/audit.db` (SQLite) and expire after 90 days (configurable via
    `LI_SESSION_EXPIRY_DAYS`).
 
 Both sources are checked on every request.  All API calls made with
@@ -451,7 +451,7 @@ All tunables live in `config.py`:
 - `LIKERT_SCALE` — 5-level thresholds on the 0-1 SVI composite
 - `JURISDICTION_REGISTRY` — maps short codes to adapter classes
 - `LI_SESSION_EXPIRY_DAYS` — days before a self-registered token expires
-  (default: 7)
+  (default: 90)
 - `LI_AUDIT_DIR` — directory for the audit SQLite database (default: `logs/`)
 
 ## Design Decisions

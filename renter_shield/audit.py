@@ -5,7 +5,7 @@ Provides:
 - Token-based authentication for both Streamlit apps and the FastAPI API
 - Page-view logging for Streamlit sessions
 - API-call logging
-- Session expiry (configurable, default 7 days)
+- Session expiry (configurable, default 90 days)
 
 The SQLite file lives alongside the output data (default ``logs/audit.db``)
 and is created automatically on first use.  The ``logs/`` directory is
@@ -38,7 +38,7 @@ from typing import Any
 # ---------------------------------------------------------------------------
 _DB_DIR = Path(os.getenv("LI_AUDIT_DIR", "logs"))
 _DB_PATH = _DB_DIR / "audit.db"
-SESSION_EXPIRY_DAYS = int(os.getenv("LI_SESSION_EXPIRY_DAYS", "7"))
+SESSION_EXPIRY_DAYS = int(os.getenv("LI_SESSION_EXPIRY_DAYS", "90"))
 
 # Scopes that can be assigned at registration
 VALID_SCOPES = {"renter", "investigator"}
@@ -233,6 +233,16 @@ def require_registration(scope: str) -> dict[str, Any] | None:
         # Expired — clear and re-register
         del st.session_state[session_key]
 
+    # Check for token in query params (browser remembers across visits)
+    qp_token = st.query_params.get("token")
+    if qp_token:
+        user = validate_token(qp_token.strip())
+        if user and user.get("scope") == scope:
+            st.session_state[session_key] = user
+            return user
+        # Invalid/expired/wrong scope — remove the stale param
+        del st.query_params["token"]
+
     # Show registration form
     st.title("🔐 Access Registration")
 
@@ -250,6 +260,7 @@ def require_registration(scope: str) -> dict[str, Any] | None:
                 user = validate_token(token_input.strip())
                 if user and user.get("scope") == scope:
                     st.session_state[session_key] = user
+                    st.query_params["token"] = user["token"]
                     st.rerun()
                 elif user:
                     st.error(f"This token is for **{user['scope']}** access, not **{scope}**.")
@@ -299,6 +310,7 @@ def require_registration(scope: str) -> dict[str, Any] | None:
 
             user = register_user(name=name, email=email, role=role, scope=scope)
             st.session_state[session_key] = user
+            st.query_params["token"] = user["token"]
 
             # Show token for API access
             st.success("✅ Registered! You now have access.")
@@ -306,7 +318,8 @@ def require_registration(scope: str) -> dict[str, Any] | None:
                 f"**Your API token** (use as `X-API-Key` header for API calls):\n\n"
                 f"`{user['token']}`\n\n"
                 f"Save this — it won't be shown again. "
-                f"Expires after {SESSION_EXPIRY_DAYS} days."
+                f"Expires after {SESSION_EXPIRY_DAYS} days.\n\n"
+                f"Bookmark this page to stay signed in."
             )
             st.button("Continue to app →", key="_audit_continue")
             return None  # Let user see the token before proceeding
