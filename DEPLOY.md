@@ -109,7 +109,7 @@ Internet → https://rentershield.org → Hetzner VPS (Germany)
   ├─ :443          nginx (TLS, rate-limited reverse proxy)
   │    ├─ /              → 301 redirect to /about (landing page)
   │    ├─ /about         → static landing page
-  │    ├─ /*             → Streamlit (:8501)  — renter public dashboard
+  │    ├─ /* (fallback)  → Streamlit (:8501)  — renter public dashboard
   │    ├─ /investigator/ → Streamlit (:8502)  — investigator dashboard
   │    └─ /api/*         → FastAPI  (:8000)   — API key required
   └─ Data:  output/all_landlords_harm_scores.parquet (mounted read-only)
