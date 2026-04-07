@@ -8,6 +8,7 @@ set -euo pipefail
 
 DOMAIN="rentershield.org"
 WWW_DOMAIN="www.rentershield.org"
+FTP_DOMAIN="ftp.rentershield.org"
 EXPECTED_IP="${1:-}"
 
 RED='\033[0;31m'
@@ -27,6 +28,7 @@ errors=0
 echo ""
 echo "=== DNS Resolution ==="
 
+root_domain_ip=""
 for host in "$DOMAIN" "$WWW_DOMAIN"; do
     ip=$(dig +short "$host" A 2>/dev/null | head -1)
     if [ -z "$ip" ]; then
@@ -41,15 +43,36 @@ for host in "$DOMAIN" "$WWW_DOMAIN"; do
         else
             pass "$host → $ip"
         fi
+        # Capture the root domain IP for reuse in subsequent checks
+        [ "$host" = "$DOMAIN" ] && root_domain_ip="$ip"
     fi
 done
+
+# Verify the ftp CNAME resolves to the same server IP
+ftp_resolved=$(dig +short "$FTP_DOMAIN" A 2>/dev/null | head -1)
+ftp_cname=$(dig +short "$FTP_DOMAIN" CNAME 2>/dev/null | head -1)
+if [ -z "$ftp_resolved" ]; then
+    fail "$FTP_DOMAIN — CNAME does not resolve to an IP"
+    echo "  Fix: Add a CNAME record for 'ftp' pointing to 'rentershield.org.' at your registrar."
+    errors=$((errors + 1))
+else
+    if [ -n "$root_domain_ip" ] && [ "$ftp_resolved" != "$root_domain_ip" ]; then
+        warn "$FTP_DOMAIN → $ftp_resolved (differs from $DOMAIN → $root_domain_ip)"
+    else
+        if [ -n "$ftp_cname" ]; then
+            pass "$FTP_DOMAIN CNAME → $ftp_cname → $ftp_resolved"
+        else
+            pass "$FTP_DOMAIN → $ftp_resolved"
+        fi
+    fi
+fi
 
 # ── 2. Port connectivity ────────────────────────────────────────
 echo ""
 echo "=== Port Connectivity ==="
 
-# Determine target IP for connectivity checks
-target_ip=$(dig +short "$DOMAIN" A 2>/dev/null | head -1)
+# Determine target IP for connectivity checks (reuse captured root IP if available)
+target_ip="$root_domain_ip"
 if [ -z "$target_ip" ]; then
     if [ -n "$EXPECTED_IP" ]; then
         target_ip="$EXPECTED_IP"

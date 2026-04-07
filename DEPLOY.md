@@ -3,11 +3,13 @@
 Target: Hetzner **CX32** (4 vCPU, 8 GB RAM, 80 GB disk — ~€7.50/mo).
 Location: **Falkenstein** or **Nuremberg** (Germany).
 
+**Current server IP:** `204.168.232.213`
+
 ## 1. Provision the server
 
 1. Create a Hetzner Cloud project and add an SSH key.
 2. Spin up a **CX32** running **Ubuntu 24.04**.
-3. Note the public IP (`$SERVER_IP`).
+3. Note the public IP. The current deployed IP is `204.168.232.213`.
 
 ## 2. Configure DNS
 
@@ -15,13 +17,20 @@ Before anything else, point `rentershield.org` at the server IP. Without
 this step, HTTPS certificate issuance will fail and the site will be
 unreachable.
 
-At your domain registrar (Namecheap, Cloudflare, etc.) create **two A
-records** (and optionally AAAA if the VPS has IPv6):
+At your domain registrar create the following DNS records (and optionally
+AAAA if the VPS has IPv6):
 
-| Type | Host | Value        | TTL  |
-|------|------|-------------|------|
-| A    | @    | `$SERVER_IP` | 300  |
-| A    | www  | `$SERVER_IP` | 300  |
+| Type  | Host | Value                | TTL  |
+|-------|------|---------------------|------|
+| A     | @    | `204.168.232.213`   | 300  |
+| A     | www  | `204.168.232.213`   | 300  |
+| CNAME | ftp  | `rentershield.org.` | 3600 |
+| TXT   | @    | `"v=spf1 -all"`     | 3600 |
+
+> The `ftp` CNAME resolves to the same IP as the root domain so any
+> requests to `ftp.rentershield.org` are handled and redirected to HTTPS
+> by the same nginx instance.  The SPF record `v=spf1 -all` explicitly
+> disallows all mail senders for this domain.
 
 > **Cloudflare users:** set DNS records to **DNS only** (grey cloud) — not
 > **Proxied** (orange cloud). Cloudflare's proxy rewrites headers and can
@@ -32,12 +41,14 @@ Wait for propagation (typically 1–5 minutes for low TTL, up to 48 hours
 for some registrars), then verify:
 
 ```bash
-# Should return your server IP
+# Should return 204.168.232.213
 dig +short rentershield.org
 dig +short www.rentershield.org
+# Should also resolve (via CNAME) to 204.168.232.213
+dig +short ftp.rentershield.org
 
 # Quick connectivity check from your local machine
-curl -sI http://$SERVER_IP    # expect "connection refused" (nginx not up yet) or a response
+curl -sI http://204.168.232.213    # expect "connection refused" (nginx not up yet) or a response
 ```
 
 If `dig` returns nothing or a wrong IP, DNS hasn't propagated yet — do **not**
@@ -118,7 +129,10 @@ apt install -y certbot
 
 # Get certificate (stop nginx briefly so certbot can bind :80)
 docker compose stop nginx
-certbot certonly --standalone -d rentershield.org -d www.rentershield.org
+certbot certonly --standalone \
+  -d rentershield.org \
+  -d www.rentershield.org \
+  -d ftp.rentershield.org
 docker compose start nginx
 ```
 
@@ -137,7 +151,7 @@ bash deploy/dns-check.sh
 ```
 
 It checks:
-1. DNS resolution for `rentershield.org` and `www.rentershield.org`
+1. DNS resolution for `rentershield.org`, `www.rentershield.org`, and `ftp.rentershield.org`
 2. TCP connectivity on ports 80 and 443
 3. HTTP response from the server
 4. TLS certificate validity (if HTTPS is configured)
@@ -147,7 +161,7 @@ It checks:
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `dig` returns no IP | A record missing or not propagated | Add A record at registrar; wait and retry |
-| `dig` returns wrong IP | Stale DNS / wrong record | Update the A record to `$SERVER_IP` |
+| `dig` returns wrong IP | Stale DNS / wrong record | Update the A record to `204.168.232.213` |
 | IP is correct but port 80 unreachable | Firewall blocking traffic | Run `ufw allow 80/tcp && ufw allow 443/tcp` |
 | HTTP works but HTTPS fails | Certs not issued yet | Run certbot per §6 |
 | Cloudflare 522/525 errors | Proxied mode conflicts with origin | Set DNS records to "DNS only" (grey cloud) |
