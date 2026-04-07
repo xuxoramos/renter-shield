@@ -110,7 +110,15 @@ cd deploy
 docker compose up -d --build
 ```
 
-Verify (after TLS is configured in the next section):
+Verify immediately (bare-IP, before TLS):
+```bash
+curl -I http://204.168.232.213/healthz          # 200 "ok"
+curl -I http://204.168.232.213/                  # 301 → /about
+curl -I http://204.168.232.213/about             # landing page HTML
+curl -I http://204.168.232.213/investigator/     # Streamlit investigator HTML
+```
+
+Verify again after TLS is configured (§6):
 ```bash
 curl -I https://rentershield.org/healthz          # 200 "ok"
 curl -I https://rentershield.org/                  # 301 → /about
@@ -181,7 +189,8 @@ docker compose -f deploy/docker-compose.yml restart app
 
 ```
 Internet → https://rentershield.org → Hetzner VPS (Germany)
-  ├─ :80           nginx — redirects HTTP → HTTPS
+  ├─ :80           nginx — redirects HTTP → HTTPS (domain)
+  │                       serves full app over HTTP (bare IP)
   ├─ :443          nginx (TLS, rate-limited reverse proxy)
   │    ├─ /              → 301 redirect to /about (landing page)
   │    ├─ /about         → static landing page
@@ -190,6 +199,12 @@ Internet → https://rentershield.org → Hetzner VPS (Germany)
   │    └─ /api/*         → FastAPI  (:8000)   — API key required
   └─ Data:  output/all_landlords_harm_scores.parquet (mounted read-only)
 ```
+
+> **Bare-IP access:** The port 80 `default_server` block serves the full
+> application over plain HTTP when accessed by IP address.  This makes the
+> site usable before DNS propagation completes or when TLS is not yet
+> configured.  Requests via the domain name on port 80 are still redirected
+> to HTTPS as before.
 
 **Investigator Streamlit** is started with `--server.baseUrlPath investigator` so
 that it serves at `/investigator/`.  The nginx `proxy_pass http://investigator;`
