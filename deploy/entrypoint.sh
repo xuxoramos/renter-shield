@@ -28,6 +28,7 @@ supervise renter-streamlit streamlit run streamlit_renter.py \
     --server.headless true \
     --server.fileWatcherType none \
     --server.maxMessageSize 200 \
+    --server.baseUrlPath renter \
     --browser.gatherUsageStats false &
 
 # Start investigator Streamlit (supervised, foreground — keeps container alive)
