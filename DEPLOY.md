@@ -9,7 +9,43 @@ Location: **Falkenstein** or **Nuremberg** (Germany).
 2. Spin up a **CX32** running **Ubuntu 24.04**.
 3. Note the public IP (`$SERVER_IP`).
 
-## 2. Initial server setup
+## 2. Configure DNS
+
+Before anything else, point `rentershield.org` at the server IP. Without
+this step, HTTPS certificate issuance will fail and the site will be
+unreachable.
+
+At your domain registrar (Namecheap, Cloudflare, etc.) create **two A
+records** (and optionally AAAA if the VPS has IPv6):
+
+| Type | Host | Value        | TTL  |
+|------|------|-------------|------|
+| A    | @    | `$SERVER_IP` | 300  |
+| A    | www  | `$SERVER_IP` | 300  |
+
+> **Cloudflare users:** set DNS records to **DNS only** (grey cloud) — not
+> **Proxied** (orange cloud). Cloudflare's proxy rewrites headers and can
+> interfere with Let's Encrypt ACME challenges and WebSocket connections
+> used by Streamlit.
+
+Wait for propagation (typically 1–5 minutes for low TTL, up to 48 hours
+for some registrars), then verify:
+
+```bash
+# Should return your server IP
+dig +short rentershield.org
+dig +short www.rentershield.org
+
+# Quick connectivity check from your local machine
+curl -sI http://$SERVER_IP    # expect "connection refused" (nginx not up yet) or a response
+```
+
+If `dig` returns nothing or a wrong IP, DNS hasn't propagated yet — do **not**
+proceed to TLS setup until both records resolve correctly.
+
+A diagnostic script is included at `deploy/dns-check.sh` — see §7.
+
+## 3. Initial server setup
 
 ```bash
 ssh root@$SERVER_IP
@@ -37,7 +73,7 @@ ufw allow 443/tcp
 ufw enable
 ```
 
-## 3. Clone and configure
+## 4. Clone and configure
 
 ```bash
 git clone https://github.com/<your-org>/renter-shield.git /opt/renter-shield
@@ -56,14 +92,14 @@ echo "LI_API_KEY=$LI_API_KEY" >> .env
 echo "Save this API key: $LI_API_KEY"
 ```
 
-## 4. Launch
+## 5. Launch
 
 ```bash
 cd deploy
 docker compose up -d --build
 ```
 
-Verify (after TLS is configured per §5):
+Verify (after TLS is configured per §6):
 ```bash
 curl -I https://rentershield.org/healthz          # 200 "ok"
 curl -I https://rentershield.org/                  # 301 → /about
@@ -72,7 +108,7 @@ curl -I https://rentershield.org/investigator/     # Streamlit investigator HTML
 curl -H "X-API-Key: $LI_API_KEY" https://rentershield.org/api/investigator/jurisdictions  # API
 ```
 
-## 5. TLS with Let's Encrypt
+## 6. TLS with Let's Encrypt
 
 The nginx config is already set up for `rentershield.org`. Just obtain the
 certificate and restart:
@@ -91,7 +127,33 @@ Auto-renew:
 echo "0 3 * * * certbot renew --pre-hook 'docker compose -f /opt/renter-shield/deploy/docker-compose.yml stop nginx' --post-hook 'docker compose -f /opt/renter-shield/deploy/docker-compose.yml start nginx'" | crontab -
 ```
 
-## 6. Updating data
+## 7. Troubleshooting DNS and connectivity
+
+A diagnostic script is included at `deploy/dns-check.sh`. Run it from
+any machine with `dig` and `curl` installed:
+
+```bash
+bash deploy/dns-check.sh
+```
+
+It checks:
+1. DNS resolution for `rentershield.org` and `www.rentershield.org`
+2. TCP connectivity on ports 80 and 443
+3. HTTP response from the server
+4. TLS certificate validity (if HTTPS is configured)
+
+### Common problems
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `dig` returns no IP | A record missing or not propagated | Add A record at registrar; wait and retry |
+| `dig` returns wrong IP | Stale DNS / wrong record | Update the A record to `$SERVER_IP` |
+| IP is correct but port 80 unreachable | Firewall blocking traffic | Run `ufw allow 80/tcp && ufw allow 443/tcp` |
+| HTTP works but HTTPS fails | Certs not issued yet | Run certbot per §6 |
+| Cloudflare 522/525 errors | Proxied mode conflicts with origin | Set DNS records to "DNS only" (grey cloud) |
+| `ERR_TOO_MANY_REDIRECTS` | Cloudflare SSL set to "Flexible" | Set Cloudflare SSL mode to "Full (strict)" or disable proxy |
+
+## 8. Updating data
 
 When new scores are generated:
 
