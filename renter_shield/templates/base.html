@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Renter Shield{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav class="topnav">
+    <div class="container wide topnav-inner">
+      <a href="/renter/" class="topnav-brand">🏠 Renter Shield</a>
+      <div class="topnav-links">
+        {% if request.url.path.startswith('/investigator') %}
+        <a href="/renter/">Switch to Renter Search</a>
+        <a href="/investigator/" class="nav-active">Investigator</a>
+        {% else %}
+        <a href="/renter/" class="nav-active">Search</a>
+        <a href="/investigator/">Switch to Investigator</a>
+        {% endif %}
+      </div>
+      {% if user %}
+      <div class="topnav-right">
+        <span class="topnav-user">{{ user.name }}</span>
+        {% if user.scope == "investigator" %}
+        <a href="/investigator/sign-out" class="topnav-signout">Sign out</a>
+        {% else %}
+        <a href="/renter/sign-out" class="topnav-signout">Sign out</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </nav>
+
+  <main class="container wide">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <div class="container">
+      Open-source housing transparency tool &middot;
+      <a href="/docs">API</a> &middot;
+      <a href="https://github.com/xuxoramos/renter-shield">Source</a>
+    </div>
+  </footer>
+</body>
+</html>

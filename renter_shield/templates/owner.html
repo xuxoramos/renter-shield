@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ display_name }} — Renter Shield{% endblock %}
+
+{% block content %}
+<p style="margin-bottom:1rem;">
+  <a href="/renter/">&larr; Search another address</a>
+</p>
+
+<h1>🏠 Landlord: {{ display_name }}</h1>
+<p class="disclaimer">
+  Scores are derived from publicly available government records. They do not
+  constitute legal findings. Independent verification is required.
+</p>
+
+<!-- Metrics -->
+<div class="metrics">
+  <div class="metric"><div class="value">{{ jurisdiction }}</div><div class="label">Jurisdiction</div></div>
+  <div class="metric"><div class="value"><span class="dot dot-{{ dot_color }}"></span>{{ likert_label }}</div><div class="label">Rating</div></div>
+  <div class="metric"><div class="value">{{ num_properties }}</div><div class="label">Properties Managed</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(total_violations) }}</div><div class="label">Total Violations</div></div>
+</div>
+
+<details class="expander">
+  <summary>What does the landlord rating mean?</summary>
+  <div class="body">
+    <p>Compares this owner's violation record against all other landlords in the same jurisdiction. Considers severity, density, spread, and persistence.</p>
+    <table class="data-table" style="margin-top:0.75rem;">
+      <tr><td><span class="dot dot-green"></span>Low concern</td><td>Better than ~80% of landlords</td></tr>
+      <tr><td><span class="dot dot-yellow"></span>Some concerns</td><td>Moderate violation history</td></tr>
+      <tr><td><span class="dot dot-orange"></span>Moderate concerns</td><td>Above-average violation record</td></tr>
+      <tr><td><span class="dot dot-red"></span>Significant concerns</td><td>Worse than ~80% of landlords</td></tr>
+      <tr><td><span class="dot dot-red"></span>Severe concerns</td><td>Among the worst in the jurisdiction</td></tr>
+    </table>
+  </div>
+</details>
+
+<!-- Properties -->
+<hr class="st-hr">
+<h2>Properties</h2>
+
+{% if properties|length == 0 %}
+<p class="muted">No linked properties found for this owner.</p>
+{% else %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Address</th>
+      <th>Rating</th>
+      <th>Violations</th>
+      <th>Critical</th>
+      <th>Open</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in properties %}
+    <tr>
+      <td><a href="/renter/property/{{ row.bbl }}">{{ row.address }}</a></td>
+      <td><span class="dot dot-{{ row.dot_color }}"></span>{{ row.rating_label }}</td>
+      <td>{{ row.total }}</td>
+      <td>{{ row.critical }}</td>
+      <td>{{ row.open }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

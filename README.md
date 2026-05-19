@@ -10,8 +10,8 @@ Multi-jurisdiction landlord harm-score toolkit.  Downloads housing code
 enforcement data from twelve U.S. cities and federal HUD inspections
 (split by state), normalises it into a common schema, computes a composite
 harm score per landlord, and serves the results via a dual-audience REST API
-and two purpose-built Streamlit dashboards — one for renters and one for
-investigators.
+and serves the results via a dual-audience REST API and server-rendered web
+UI (htmx + Jinja2) — one interface for renters and one for investigators.
 
 ## Data Archive
 
@@ -298,13 +298,15 @@ renter_shield/
 ├── pipeline.py         # Orchestrates download → load → resolve → score
 ├── audit.py            # SQLite-backed user registration, token auth, audit logging
 ├── cli.py              # Command-line interface
+├── web.py              # Renter web UI routes (htmx + Jinja2)
+├── web_investigator.py # Investigator web UI routes (htmx + Jinja2)
+├── templates/          # Jinja2 HTML templates
+├── static/             # CSS, htmx.min.js
 └── api.py              # Dual-audience FastAPI: /renter/ and /investigator/ routes
-streamlit_renter.py     # Renter dashboard: address search → property detail (port 8501)
-streamlit_investigator.py  # Investigator dashboard: overview → jurisdiction → owner (port 8502)
 deploy/
-├── Dockerfile          # Python 3.12-slim, FastAPI + 2 Streamlit apps
-├── docker-compose.yml  # app + nginx reverse proxy (ports 8000, 8501, 8502)
-├── entrypoint.sh       # Runs uvicorn + both Streamlit apps
+├── Dockerfile          # Python 3.12-slim, FastAPI only
+├── docker-compose.yml  # app + nginx reverse proxy
+├── entrypoint.sh       # Runs uvicorn (single process)
 ├── nginx.conf          # Rate-limited proxy, TLS-ready
 └── landing/            # Static landing page served at /about
     └── index.html
@@ -336,22 +338,17 @@ renter-shield download --jurisdiction nyc
 # Run the scoring pipeline
 renter-shield score
 
-# Start the API server (dual-audience, scoped keys)
+# Start the API + web UI server (dual-audience, scoped keys)
 export LI_API_KEYS="inv-key:investigator,renter-key:renter"
 uvicorn renter_shield.api:app --host 0.0.0.0 --port 8000
-
-# Start the renter Streamlit dashboard (port 8501)
-streamlit run streamlit_renter.py --server.port 8501
-
-# Start the investigator Streamlit dashboard (port 8502)
-streamlit run streamlit_investigator.py --server.port 8502
 ```
 
-## Streamlit Dashboards
+## Web UI
 
-Two separate Streamlit apps serve different audiences from the same data.
+The server-rendered web UI is built with htmx + Jinja2 and served directly
+by FastAPI — no separate frontend process needed.
 
-### Renter App (`streamlit_renter.py` — port 8501)
+### Renter Interface (`/renter/`)
 
 Address-first interface for prospective tenants.  Shows Likert ratings
 instead of raw scores.  No owner IDs or confidence tiers are exposed.
@@ -359,26 +356,22 @@ Requires self-registration before access (name, email, role).
 
 | Page | URL | Description |
 |------|-----|-------------|
-| **Address Search** | `/` | Search by address + jurisdiction, results show Likert rating per property and owner signal |
-| **Property Detail** | `/?page=property&bbl=...` | Violation timeline, Likert rating, owner Likert rating (if available), rating explainer, downloadable PDF report |
-| **Owner Detail** | `/?page=owner&owner=...` | Landlord rating, properties managed, total violations, property list |
+| **Registration** | `/renter/register` | Self-registration with disclaimer acknowledgement |
+| **Address Search** | `/renter/` | Search by address, results show Likert rating per property |
+| **Property Detail** | `/renter/property/{bbl}` | Violation timeline, Likert rating, owner signal, downloadable PDF |
+| **Owner Detail** | `/renter/owner/{owner_id}` | Landlord rating, properties managed, total violations |
 
-The renter app includes a **Know Your Rights** sidebar with links to tenant
-protection resources, complaint hotlines, and legal aid organizations
-for each covered city.
-
-### Investigator App (`streamlit_investigator.py` — port 8502)
+### Investigator Interface (`/investigator/`)
 
 Owner-centric harm-score explorer for housing investigations.  Full access
 to SVI composite, theme percentiles, legacy scores, and confidence tiers.
-Requires self-registration before access; all page views are logged to the
-audit database for accountability.
+Requires investigator-scoped registration; all page views are logged for accountability.
 
 | Page | URL | Description |
 |------|-----|-------------|
-| **Overview** | `/` | Jurisdiction cards with summary stats, cross-jurisdiction search |
-| **Jurisdiction** | `/?page=jurisdiction&jur=boston` | Ranked owner table with Likert badge + confidence badge, filters, score distribution chart |
-| **Owner Detail** | `/?page=owner&owner=...` | SVI composite, Likert rating, theme percentiles (severity, portfolio, compliance), legacy score breakdown chart + table, confidence callout |
+| **Overview** | `/investigator/` | Jurisdiction cards with summary stats, cross-jurisdiction search |
+| **Jurisdiction** | `/investigator/jurisdiction/{code}` | Ranked owner table with filters, confidence breakdown |
+| **Owner Detail** | `/investigator/owner/{owner_id}` | SVI composite, theme percentiles, legacy score breakdown, confidence badge |
 
 ## API Endpoints
 
@@ -393,9 +386,9 @@ sources:
 1. **Environment / file** — `LI_API_KEYS` env var (comma-separated) or
    `api_keys.txt` (one per line).  Format: `key:scope` (bare key defaults
    to `investigator`).
-2. **Self-registration** — users who register via either Streamlit app
-   receive a UUID token that also works as an API key.  Tokens are stored
-   in `logs/audit.db` (SQLite) and expire after 90 days (configurable via
+2. **Self-registration** — users who register via the web UI receive a
+   UUID token that also works as an API key.  Tokens are stored in
+   `logs/audit.db` (SQLite) and expire after 90 days (configurable via
    `LI_SESSION_EXPIRY_DAYS`).
 
 Both sources are checked on every request.  All API calls made with

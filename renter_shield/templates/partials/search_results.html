@@ -1,0 +1,31 @@
+{% if results|length == 0 %}
+<div class="st-warning">No properties found matching that address. Try a shorter search (e.g. street name only).</div>
+{% else %}
+<p style="margin:1rem 0 0.5rem;"><strong>{{ results|length }}</strong> matching properties (showing up to 100)</p>
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Address</th>
+      <th>City</th>
+      <th>Rating</th>
+      <th>Violations</th>
+      <th>Critical</th>
+      <th>Open</th>
+      <th>Owner</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in results %}
+    <tr>
+      <td><a href="/renter/property/{{ row.bbl }}?q={{ q|default('', true)|urlencode }}">{{ row.address }}</a></td>
+      <td>{{ row.city }}</td>
+      <td><span class="dot dot-{{ row.dot_color }}"></span>{{ row.rating_label }}</td>
+      <td>{{ row.total }}</td>
+      <td>{{ row.critical }}</td>
+      <td>{{ row.open }}</td>
+      <td>{{ row.owner_label }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}

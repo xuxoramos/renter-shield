@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Welcome — Investigator{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+  <h1>You're registered!</h1>
+  <p>Your investigator API token (save it — you won't see it again):</p>
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <code class="token-display" id="token-value">{{ token }}</code>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('token-value').textContent).then(()=>{this.innerHTML='&#x2713;';setTimeout(()=>{this.innerHTML=this.dataset.icon},1500)})" data-icon='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5.5" y="5.5" width="8" height="8" rx="1"/><path d="M3 10.5V3a1 1 0 011-1h7.5"/></svg>' title="Copy to clipboard" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:0.3rem 0.4rem;line-height:1;display:flex;align-items:center;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5.5" y="5.5" width="8" height="8" rx="1"/><path d="M3 10.5V3a1 1 0 011-1h7.5"/></svg></button>
+  </div>
+  <p class="muted" style="margin-top:1rem;">You're now signed in via browser cookie (90 days). Bookmark any page to come back without re-registering.</p>
+  <a href="/investigator/" class="st-btn" style="margin-top:1.5rem;">Open Explorer</a>
+</div>
+{% endblock %}

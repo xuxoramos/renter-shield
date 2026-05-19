@@ -18,8 +18,6 @@ services:
       - app-logs:/app/logs
     expose:
       - "8000"
-      - "8501"
-      - "8502"
 
   nginx:
     image: nginx:1-alpine

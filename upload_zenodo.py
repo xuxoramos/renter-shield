@@ -91,7 +91,7 @@ harm-score toolkit for the NYOAG housing investigation.</p>
       harm scores, owner registrations, properties, violations, top-N
       reports ({n_output} files).</li>
   <li><code>renter-shield-source-{today}.tar.gz</code> — full source
-      tree (Python package, Streamlit apps, Dockerfile, deployment
+      tree (Python package, web UI, Dockerfile, deployment
       config).</li>
 </ul>
 

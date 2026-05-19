@@ -1,0 +1,29 @@
+### Harm Score Formula
+
+```
+Harm Score = (Severity × 0.4) + (Density × 100 × 0.3)
+           + (Widespread × 100 × 0.2) + (Persistence × 100 × 0.1)
+```
+
+| Component | Weight | Description |
+|-----------|--------|-------------|
+| **Severity** | 40% | Weighted sum: Critical = 5 pts, Serious = 2.5, Minor = 1, Info = 0 |
+| **Density** | 30% | Violations ÷ residential units |
+| **Widespread** | 20% | Properties with violations ÷ total properties |
+| **Persistence** | 10% | Open violations ÷ total violations |
+
+### Confidence Levels
+
+| Level | Meaning | Recommended Use |
+|-------|---------|-----------------|
+| 🟢 **High** | Name matches AND shares a business address | Safe for filings and subpoenas |
+| 🟡 **Medium** | Name matches, ≤3 addresses, no overlap | Investigate further before formal action |
+| 🟠 **Low** | Same business address, different names | Investigative lead only |
+
+Names appearing at >3 distinct addresses without corroboration are excluded
+as likely name collisions.
+
+### Data Sources
+
+All data is from publicly available government open-data portals.
+Violation records cover January 2022 through the most recent download.

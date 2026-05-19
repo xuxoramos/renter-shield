@@ -26,10 +26,14 @@ from typing import Annotated
 
 import polars as pl
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Security
+from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
+from fastapi.staticfiles import StaticFiles
 
 from renter_shield.config import SEVERITY_POINTS
 from renter_shield import audit
+from renter_shield.web import router as web_router
+from renter_shield.web_investigator import router as web_investigator_router
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -689,11 +693,44 @@ app = FastAPI(
         "can access all routes; renter keys are restricted to `/renter/` endpoints."
     ),
     version="0.2.0",
-    root_path="/api",
 )
 
-app.include_router(renter_router)
-app.include_router(investigator_router)
+app.include_router(renter_router, prefix="/api")
+app.include_router(investigator_router, prefix="/api")
+app.include_router(web_router)
+app.include_router(web_investigator_router)
+
+# Static files (CSS, htmx)
+_STATIC_DIR = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+
+# ---------------------------------------------------------------------------
+# Custom error handlers for HTML pages
+# ---------------------------------------------------------------------------
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.templating import Jinja2Templates as _Tmpl
+
+_web_templates = _Tmpl(directory=str(Path(__file__).parent / "templates"))
+
+
+@app.exception_handler(404)
+async def _not_found_handler(request, exc):
+    """Serve styled 404 for browser requests; JSON for API calls."""
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": str(exc.detail)}, status_code=404)
+    return _web_templates.TemplateResponse(
+        request, "404.html", {"user": None, "message": str(exc.detail)}, status_code=404,
+    )
+
+
+@app.exception_handler(500)
+async def _server_error_handler(request, exc):
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": "Internal server error"}, status_code=500)
+    return _web_templates.TemplateResponse(
+        request, "500.html", {"user": None}, status_code=500,
+    )
 
 
 @app.middleware("http")

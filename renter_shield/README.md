@@ -125,7 +125,7 @@ becomes `hud_reac_<state>` (e.g. `hud_reac_ny`, `hud_reac_ca`).  This means:
 - **SVI percentile scoring** computes percentile ranks within each state
   pool, producing more meaningful comparisons (a property in New York is
   compared to other New York HUD properties, not to all 23K nationwide).
-- **Streamlit display** renders these as "HUD REAC — New York", etc.
+- **Web UI** renders these as "HUD REAC — New York", etc.
 
 ## Severity Mapping
 
@@ -204,10 +204,10 @@ investigators who need immediate access.
 **Chosen approach: self-registration with audit logging.**
 
 - Users register via a form (name, email, role) on first visit to either
-  Streamlit app.  Access is granted immediately — no admin approval needed.
+  web UI.  Access is granted immediately — no admin approval needed.
 - A UUID token is issued at registration and doubles as an API key for
   programmatic access via the `X-API-Key` header.
-- All page views (Streamlit) and API calls (FastAPI) are logged with
+- All page views and API calls are logged with
   user ID, path, and timestamp to `logs/audit.db` (SQLite).
 - Tokens expire after 90 days (`LI_SESSION_EXPIRY_DAYS`), after which the
   user must re-register.
@@ -215,10 +215,10 @@ investigators who need immediate access.
 ### Why SQLite?
 
 - Zero cost — stdlib `sqlite3`, no new dependencies.
-- Concurrent-safe for Streamlit's per-request model (WAL mode).
+- Concurrent-safe for multi-worker uvicorn (WAL mode).
 - Single file, easily backed up or downloaded for review.
 - Queryable — supports ad-hoc access audits, unlike append-only CSV.
-- Shared across both Streamlit apps and the API.
+- Shared across both web UIs and the API.
 
 ### Schema
 
@@ -230,10 +230,10 @@ api_calls (id, user_id, path, method, called_at)
 
 ### Scope enforcement
 
-| Scope | Streamlit access | API access |
+| Scope | Web UI access | API access |
 |-------|-----------------|------------|
-| `renter` | Renter app only | `/renter/*` endpoints |
-| `investigator` | Investigator app only | `/renter/*` + `/investigator/*` |
+| `renter` | Renter pages only | `/renter/*` endpoints |
+| `investigator` | Investigator pages only | `/renter/*` + `/investigator/*` |
 
 Legacy env-var keys (`LI_API_KEYS`) continue to work for the API and are
 not subject to expiry.  They are intended for admin/CI use.

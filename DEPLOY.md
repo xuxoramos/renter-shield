@@ -34,8 +34,7 @@ AAAA if the VPS has IPv6):
 
 > **Cloudflare users:** set DNS records to **DNS only** (grey cloud) — not
 > **Proxied** (orange cloud). Cloudflare's proxy rewrites headers and can
-> interfere with Let's Encrypt ACME challenges and WebSocket connections
-> used by Streamlit.
+> interfere with Let's Encrypt ACME challenges.
 
 Wait for propagation (typically 1–5 minutes for low TTL, up to 48 hours
 for some registrars), then verify:
@@ -70,7 +69,7 @@ apt install -y docker-compose-plugin
 
 # Swap — the CX32 has 8 GB RAM and no swap by default.
 # A 2 GB swapfile gives the OOM killer more headroom and prevents
-# Streamlit processes from being killed during memory spikes.
+# the application container from being killed during memory spikes.
 fallocate -l 2G /swapfile
 chmod 600 /swapfile
 mkswap /swapfile
@@ -115,7 +114,8 @@ Verify immediately (bare-IP, before TLS):
 curl -I http://204.168.232.213/healthz          # 200 "ok"
 curl -I http://204.168.232.213/                  # 301 → /about
 curl -I http://204.168.232.213/about             # landing page HTML
-curl -I http://204.168.232.213/investigator/     # Streamlit investigator HTML
+curl -I http://204.168.232.213/renter/           # renter web UI
+curl -I http://204.168.232.213/investigator/     # investigator web UI
 ```
 
 Verify again after TLS is configured (§6):
@@ -123,7 +123,8 @@ Verify again after TLS is configured (§6):
 curl -I https://rentershield.org/healthz          # 200 "ok"
 curl -I https://rentershield.org/                  # 301 → /about
 curl -I https://rentershield.org/about             # landing page HTML
-curl -I https://rentershield.org/investigator/     # Streamlit investigator HTML
+curl -I https://rentershield.org/renter/           # renter web UI
+curl -I https://rentershield.org/investigator/     # investigator web UI
 curl -H "X-API-Key: $LI_API_KEY" https://rentershield.org/api/investigator/jurisdictions  # API
 ```
 
@@ -194,9 +195,10 @@ Internet → https://rentershield.org → Hetzner VPS (Germany)
   ├─ :443          nginx (TLS, rate-limited reverse proxy)
   │    ├─ /              → 301 redirect to /about (landing page)
   │    ├─ /about         → static landing page
-  │    ├─ /* (fallback)  → Streamlit (:8501)  — renter public dashboard
-  │    ├─ /investigator/ → Streamlit (:8502)  — investigator dashboard
-  │    └─ /api/*         → FastAPI  (:8000)   — API key required
+  │    ├─ /renter/*      → FastAPI (:8000) — renter web UI (htmx+Jinja2)
+  │    ├─ /investigator/ → FastAPI (:8000) — investigator web UI (htmx+Jinja2)
+  │    ├─ /static/*      → FastAPI (:8000) — CSS/JS assets
+  │    └─ /api/*         → FastAPI (:8000) — JSON API (key required)
   └─ Data:  output/all_landlords_harm_scores.parquet (mounted read-only)
 ```
 
@@ -206,10 +208,9 @@ Internet → https://rentershield.org → Hetzner VPS (Germany)
 > configured.  Requests via the domain name on port 80 are still redirected
 > to HTTPS as before.
 
-**Investigator Streamlit** is started with `--server.baseUrlPath investigator` so
-that it serves at `/investigator/`.  The nginx `proxy_pass http://investigator;`
-(no trailing slash) forwards the **full** `/investigator/` path unchanged to the
-Streamlit process, which is the correct form for Streamlit's baseUrlPath feature.
+**Single process:** The app container runs a single uvicorn process with
+2 workers that serves the JSON API, both web UIs (server-rendered with
+htmx + Jinja2), and static assets.  Only port 8000 is exposed.
 
 **Jurisdictional separation**: the VPS runs in Germany (EU), data archived
 on Zenodo (Switzerland), source code on GitHub (US). No single jurisdiction

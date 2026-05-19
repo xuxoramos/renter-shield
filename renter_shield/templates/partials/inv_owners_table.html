@@ -1,0 +1,50 @@
+<p class="muted">{{ "{:,}".format(total) }} owners match filters (page {{ page }}/{{ total_pages }})</p>
+
+{% if owners %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Owner</th>
+      <th>Confidence</th>
+      <th>Rating</th>
+      <th>Harm Score</th>
+      <th>Properties</th>
+      <th>Violations</th>
+      <th>Critical</th>
+      <th>Open</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for o in owners %}
+    <tr>
+      <td><a href="/investigator/owner/{{ o.owner_id_encoded }}">{{ o.display_name }}</a></td>
+      <td>{{ o.confidence_emoji }} {{ o.confidence|title }}</td>
+      <td><span class="dot dot-{{ o.dot_color }}"></span>{{ o.likert_label }}</td>
+      <td>{{ "{:,.0f}".format(o.harm_score) }}</td>
+      <td>{{ o.num_properties }}</td>
+      <td>{{ "{:,}".format(o.total_violations) }}</td>
+      <td>{{ "{:,}".format(o.critical) }}</td>
+      <td>{{ "{:,}".format(o.open) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="pagination">
+  {% if page > 1 %}
+  <a hx-get="/investigator/jurisdiction/{{ jur_code }}/owners?page={{ page - 1 }}&min_score={{ min_score }}&min_props={{ min_props }}&name={{ name }}"
+     hx-target="#owners-table" class="st-btn-outline st-btn">← Prev</a>
+  {% endif %}
+  <span class="muted">Page {{ page }} of {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <a hx-get="/investigator/jurisdiction/{{ jur_code }}/owners?page={{ page + 1 }}&min_score={{ min_score }}&min_props={{ min_props }}&name={{ name }}"
+     hx-target="#owners-table" class="st-btn-outline st-btn">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<p class="muted">No owners match the current filters.</p>
+{% endif %}

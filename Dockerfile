@@ -8,29 +8,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 
 # Install Python dependencies
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e "." streamlit
+RUN pip install --no-cache-dir -e "."
 
 # Copy source
 COPY renter_shield/ renter_shield/
-COPY streamlit_renter.py streamlit_investigator.py ./
 
 # Output dir will be mounted as a volume at runtime
 RUN mkdir -p output
 
-# Expose services: API, renter Streamlit, investigator Streamlit
-EXPOSE 8000 8501 8502
+# Expose FastAPI only
+EXPOSE 8000
 
-# Default: run via supervisord-like entrypoint (see entrypoint.sh)
+# Default: run via entrypoint
 COPY deploy/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 ENV LI_OUTPUT_DIR=/app/output \
     LI_API_KEYS=changeme
 
-# Health check — all three services must respond
-HEALTHCHECK --interval=10s --timeout=5s --start-period=180s --retries=3 \
-    CMD curl -sf http://127.0.0.1:8000/health > /dev/null && \
-        curl -sf http://127.0.0.1:8501/renter/_stcore/health > /dev/null && \
-        curl -sf http://127.0.0.1:8502/investigator/_stcore/health > /dev/null || exit 1
+# Health check — single FastAPI service
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -sf http://127.0.0.1:8000/health > /dev/null || exit 1
 
 ENTRYPOINT ["/entrypoint.sh"]

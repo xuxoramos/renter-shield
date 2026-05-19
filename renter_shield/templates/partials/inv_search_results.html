@@ -1,0 +1,21 @@
+{% if results %}
+<p class="muted">{{ "{:,}".format(results|length) }} owner(s) found.</p>
+<table class="data-table">
+  <thead>
+    <tr><th>Owner</th><th>Jurisdiction</th><th>Score</th><th>Properties</th><th>Violations</th></tr>
+  </thead>
+  <tbody>
+    {% for r in results %}
+    <tr>
+      <td><a href="/investigator/owner/{{ r.owner_id_encoded }}">{{ r.display_name }}</a></td>
+      <td>{{ r.display_jur }}</td>
+      <td>{{ "{:,.0f}".format(r.harm_score) }}</td>
+      <td>{{ r.num_properties }}</td>
+      <td>{{ "{:,}".format(r.total_violations) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% elif query %}
+<p class="muted">No owners found matching "{{ query }}".</p>
+{% endif %}

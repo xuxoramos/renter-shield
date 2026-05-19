@@ -1,0 +1,30 @@
+<table class="data-table">
+  <thead>
+    <tr><th>Date</th><th>Severity</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    {% for v in violations %}
+    <tr>
+      <td>{{ v.date }}</td>
+      <td>{{ v.severity }}</td>
+      <td>{{ v.status }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if total_pages > 1 %}
+<div style="display:flex;align-items:center;gap:1rem;margin-top:0.75rem;">
+  {% if page > 1 %}
+  <a hx-get="/renter/property/{{ bbl }}/violations?page={{ page - 1 }}"
+     hx-target="#violations-list" hx-swap="innerHTML"
+     class="st-btn st-btn-outline" style="padding:0.3rem 0.75rem;font-size:0.85rem;">← Prev</a>
+  {% endif %}
+  <span class="muted" style="font-size:0.85rem;">Page {{ page }} of {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <a hx-get="/renter/property/{{ bbl }}/violations?page={{ page + 1 }}"
+     hx-target="#violations-list" hx-swap="innerHTML"
+     class="st-btn st-btn-outline" style="padding:0.3rem 0.75rem;font-size:0.85rem;">Next →</a>
+  {% endif %}
+</div>
+{% endif %}

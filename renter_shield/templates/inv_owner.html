@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ display_name }} — Investigator{% endblock %}
+
+{% block content %}
+<p>
+  <a href="/investigator/">&larr; All jurisdictions</a> &middot;
+  <a href="/investigator/jurisdiction/{{ jur_code }}">&larr; {{ display_jur }}</a>
+</p>
+
+<h1>🏚️ {{ display_name }}</h1>
+<p class="disclaimer">
+  Scores are derived from publicly available government records. Independent verification is required.
+</p>
+
+<!-- Confidence badge -->
+<div class="confidence-badge confidence-{{ confidence }}">
+  {{ confidence_emoji }} <strong>{{ confidence|title }} confidence</strong> — {{ confidence_desc }}
+</div>
+
+<!-- Top-level metrics -->
+<div class="metrics">
+  <div class="metric"><div class="value">{{ display_jur }}</div><div class="label">Jurisdiction</div></div>
+  <div class="metric"><div class="value">{{ "{:,.0f}".format(harm_score) }}</div><div class="label">Legacy Harm Score</div></div>
+  <div class="metric"><div class="value">{{ "{:.2f}".format(svi_composite) if svi_composite is not none else "N/A" }}</div><div class="label">SVI Composite</div></div>
+  <div class="metric"><div class="value"><span class="dot dot-{{ dot_color }}"></span>{{ likert_label }}</div><div class="label">Rating</div></div>
+</div>
+
+<div class="metrics">
+  <div class="metric"><div class="value">{{ "{:,}".format(num_properties) }}</div><div class="label">Properties</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(total_violations) }}</div><div class="label">Violations</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(critical) }}</div><div class="label">Critical (Tier 1)</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(unresolved) }}</div><div class="label">Unresolved</div></div>
+  <div class="metric"><div class="value">{{ "{:,.0f}".format(total_units) }}</div><div class="label">Total Units</div></div>
+</div>
+
+<hr class="st-hr">
+
+<!-- SVI Theme Percentiles -->
+<h2>SVI Theme Percentiles</h2>
+<p class="muted">Within-jurisdiction percentile rank (0 = best, 1 = worst).</p>
+<div class="metrics">
+  <div class="metric"><div class="value">{{ "{:.2f}".format(theme_severity) if theme_severity is not none else "N/A" }}</div><div class="label">Severity Theme</div></div>
+  <div class="metric"><div class="value">{{ "{:.2f}".format(theme_portfolio) if theme_portfolio is not none else "N/A" }}</div><div class="label">Portfolio Theme</div></div>
+  <div class="metric"><div class="value">{{ "{:.2f}".format(theme_compliance) if theme_compliance is not none else "N/A" }}</div><div class="label">Compliance Theme</div></div>
+  <div class="metric"><div class="value">{{ "{:.2f}".format(svi_composite) if svi_composite is not none else "N/A" }}</div><div class="label">SVI Composite</div></div>
+</div>
+
+<hr class="st-hr">
+
+<!-- Score breakdown table -->
+<h2>Legacy Weighted-Linear Breakdown</h2>
+<table class="data-table">
+  <thead>
+    <tr><th>Component</th><th>Raw Value</th><th>Weight</th><th>Weighted</th></tr>
+  </thead>
+  <tbody>
+    {% for b in breakdown %}
+    <tr>
+      <td>{{ b.component }}</td>
+      <td>{{ b.raw }}</td>
+      <td>{{ b.weight }}</td>
+      <td>{{ b.weighted }}</td>
+    </tr>
+    {% endfor %}
+    <tr style="font-weight:700;">
+      <td>Total</td>
+      <td></td>
+      <td>100%</td>
+      <td>{{ "{:,.1f}".format(harm_score) }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- Raw data expander -->
+<details class="expander" style="margin-top:2rem;">
+  <summary>Raw metrics (JSON)</summary>
+  <div class="body">
+    <pre style="font-size:0.8rem; overflow-x:auto;">{{ raw_json }}</pre>
+  </div>
+</details>
+
+<hr class="st-hr">
+<details class="expander">
+  <summary>📖 Methodology</summary>
+  <div class="body">
+    {% include "partials/methodology.html" %}
+  </div>
+</details>
+{% endblock %}

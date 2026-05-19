@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Investigator — Renter Shield{% endblock %}
+
+{% block content %}
+<h1>🏚️ Landlord Harm Score Explorer</h1>
+<p class="disclaimer">
+  Scores are derived from publicly available government records and algorithmic
+  analysis. They do not constitute legal findings, may not reflect current
+  conditions, and may contain errors due to name-based ownership resolution.
+  Independent verification is required before any legal, administrative, or
+  public action.
+</p>
+
+<!-- Summary metrics -->
+<div class="metrics">
+  <div class="metric"><div class="value">{{ stats.jurisdictions }}</div><div class="label">Jurisdictions</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(stats.scored_owners) }}</div><div class="label">Scored Owners</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(stats.total_violations) }}</div><div class="label">Total Violations</div></div>
+</div>
+
+<!-- Confidence breakdown -->
+<p class="muted" style="margin-bottom:0.5rem;">
+  <strong>Ownership confidence</strong> — how reliably violations are attributed to a landlord.
+</p>
+<div class="metrics">
+  {% for c in confidence_counts %}
+  <div class="metric">
+    <div class="value">{{ "{:,}".format(c.count) }}</div>
+    <div class="label">{{ c.emoji }} {{ c.level|title }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<hr class="st-hr">
+
+<!-- Scored jurisdiction cards -->
+<h2>Jurisdictions</h2>
+<div class="jur-grid">
+  {% for j in scored_jurisdictions %}
+  <a href="/investigator/jurisdiction/{{ j.code }}" class="jur-card">
+    <h3>{{ j.display }}</h3>
+    <div class="jur-card-stats">
+      <span><strong>{{ "{:,}".format(j.owners) }}</strong> owners</span>
+      <span><strong>{{ "{:,.0f}".format(j.avg_score) }}</strong> avg score</span>
+      <span><strong>{{ "{:,}".format(j.violations) }}</strong> violations</span>
+      <span><strong>{{ "{:,}".format(j.critical) }}</strong> critical</span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% if unscored_jurisdictions %}
+<hr class="st-hr">
+<h2>Jurisdictions Without Owner Data</h2>
+<p class="muted">These cities have violation and property data but no publicly available owner records.</p>
+<div class="jur-grid">
+  {% for j in unscored_jurisdictions %}
+  <a href="/investigator/jurisdiction/{{ j.code }}" class="jur-card jur-card--muted">
+    <h3>{{ j.display }} ⚠️</h3>
+    <div class="jur-card-stats">
+      <span><strong>{{ "{:,}".format(j.violations) }}</strong> violations</span>
+      <span><strong>{{ "{:,}".format(j.critical) }}</strong> critical</span>
+      <span><strong>{{ "{:,}".format(j.properties) }}</strong> properties</span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Cross-jurisdiction search -->
+<hr class="st-hr">
+<h2>🔍 Search Across All Jurisdictions</h2>
+<form class="search-form" hx-get="/investigator/search" hx-target="#inv-search-results" hx-indicator="#inv-loading">
+  <input type="text" name="q" placeholder="Owner name, e.g. WALNUT CAPITAL, SMITH" minlength="3" required>
+  <button type="submit" class="st-btn">Search</button>
+</form>
+<div id="inv-loading" class="htmx-indicator">Searching…</div>
+<div id="inv-search-results"></div>
+
+<!-- Methodology -->
+<hr class="st-hr">
+<details class="expander">
+  <summary>📖 Methodology</summary>
+  <div class="body">
+    {% include "partials/methodology.html" %}
+  </div>
+</details>
+{% endblock %}

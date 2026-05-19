@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}{{ address }} — Renter Shield{% endblock %}
+
+{% block content %}
+<p style="margin-bottom:1rem;">
+  {% if back_query %}
+  <a href="/renter/?q={{ back_query }}">&larr; Back to results</a>
+  {% else %}
+  <a href="/renter/">&larr; Search another address</a>
+  {% endif %}
+</p>
+
+<h1>🏠 {{ address }}</h1>
+<p class="disclaimer">
+  Scores are derived from publicly available government records. They do not
+  constitute legal findings. Independent verification is required.
+</p>
+
+<!-- Metrics -->
+<div class="metrics">
+  <div class="metric"><div class="value">{{ jurisdiction }}</div><div class="label">Jurisdiction</div></div>
+  <div class="metric"><div class="value"><span class="dot dot-{{ dot_color }}"></span>{{ rating_label }}</div><div class="label">Rating</div></div>
+  <div class="metric"><div class="value">{{ units }}</div><div class="label">Residential Units</div></div>
+  <div class="metric"><div class="value">{{ year_built }}</div><div class="label">Year Built</div></div>
+</div>
+
+<details class="expander">
+  <summary>What does this rating mean?</summary>
+  <div class="body">
+    <p>The rating reflects the severity and resolution status of housing code violations at this address.</p>
+    <table class="data-table" style="margin-top:0.75rem;">
+      <tr><td><span class="dot dot-green"></span>No issues found</td><td>Zero violations on record</td></tr>
+      <tr><td><span class="dot dot-green"></span>Minor issues</td><td>Low-severity violations, all resolved</td></tr>
+      <tr><td><span class="dot dot-yellow"></span>Some concerns</td><td>Open violations or moderate severity</td></tr>
+      <tr><td><span class="dot dot-orange"></span>Significant issues</td><td>Critical violations present</td></tr>
+      <tr><td><span class="dot dot-red"></span>Severe issues</td><td>Critical violations + many unresolved</td></tr>
+    </table>
+    <p style="margin-top:0.75rem;">
+      <strong>This property:</strong> {{ pv.total }} violations, {{ pv.critical }} critical,
+      {{ pv.open }} open ({{ (pv.open_pct * 100)|round|int }}% unresolved)
+    </p>
+  </div>
+</details>
+
+<!-- Owner section -->
+<hr class="st-hr">
+
+{% if owner %}
+<h2>Landlord Track Record</h2>
+<p><a href="/renter/owner/{{ owner.owner_id }}">🔍 {{ owner.display_name }} — View full track record</a></p>
+<div class="metrics">
+  <div class="metric"><div class="value"><span class="dot dot-{{ owner.dot_color }}"></span>{{ owner.likert_label }}</div><div class="label">Rating</div></div>
+  <div class="metric"><div class="value">{{ owner.num_properties }}</div><div class="label">Properties Managed</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(owner.total_violations) }}</div><div class="label">Total Violations</div></div>
+</div>
+
+<details class="expander">
+  <summary>What does the landlord rating mean?</summary>
+  <div class="body">
+    <p>Compares this owner's violation record against all other landlords in the same jurisdiction. Considers severity, density (violations per unit), spread (affected properties), and persistence (unresolved fraction).</p>
+    <table class="data-table" style="margin-top:0.75rem;">
+      <tr><td><span class="dot dot-green"></span>Low concern</td><td>Better than ~80% of landlords</td></tr>
+      <tr><td><span class="dot dot-yellow"></span>Some concerns</td><td>Moderate violation history</td></tr>
+      <tr><td><span class="dot dot-orange"></span>Moderate concerns</td><td>Above-average violation record</td></tr>
+      <tr><td><span class="dot dot-red"></span>Significant concerns</td><td>Worse than ~80% of landlords</td></tr>
+      <tr><td><span class="dot dot-red"></span>Severe concerns</td><td>Among the worst in the jurisdiction</td></tr>
+    </table>
+  </div>
+</details>
+{% else %}
+<p class="muted">ℹ️ {{ no_owner_msg }}</p>
+{% endif %}
+
+<!-- Violations -->
+<hr class="st-hr">
+<h2>Violation History</h2>
+
+{% if pv.total == 0 %}
+<p class="muted">No violations recorded for this property in the analysis window.</p>
+{% else %}
+<div class="metrics">
+  <div class="metric"><div class="value">{{ "{:,}".format(pv.total) }}</div><div class="label">Total Violations</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(pv.open) }}</div><div class="label">Open</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(pv.critical) }}</div><div class="label">Critical</div></div>
+</div>
+
+<!-- Severity bar chart (pure CSS) -->
+{% if severity_counts %}
+<div class="severity-bars" style="margin:1rem 0;">
+  {% for sev in severity_counts %}
+  <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem;">
+    <span style="width:70px;font-size:0.85rem;color:var(--muted);">{{ sev.label }}</span>
+    <div style="flex:1;background:var(--secondary-bg);border-radius:3px;height:1.2rem;overflow:hidden;">
+      <div style="height:100%;width:{{ sev.pct }}%;background:{{ sev.bar_color }};border-radius:3px;"></div>
+    </div>
+    <span style="width:30px;font-size:0.85rem;text-align:right;">{{ sev.count }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Violations table with pagination -->
+<div id="violations-list"
+     hx-get="/renter/property/{{ bbl }}/violations?page=1"
+     hx-trigger="load"
+     hx-swap="innerHTML">
+</div>
+{% endif %}
+
+<!-- PDF download -->
+<hr class="st-hr">
+<a href="/renter/property/{{ bbl }}/report.pdf" class="st-btn st-btn-outline">📄 Download Property Report (PDF)</a>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Look Up an Address — Renter Shield{% endblock %}
+
+{% block content %}
+<h1>🏠 Look Up an Address</h1>
+<p class="muted" style="margin-bottom:0.5rem;">
+  <strong>Thinking about renting a place?</strong> Enter the address to see
+  housing code violations and the landlord's track record.
+</p>
+<p class="disclaimer">
+  Scores are derived from publicly available government records and algorithmic
+  analysis. They do not constitute legal findings and may contain errors.
+  Independent verification is required before any legal or administrative action.
+</p>
+
+<form class="search-form" hx-get="/renter/search" hx-target="#results" hx-indicator="#loading" hx-push-url="false">
+  <input type="text" name="q" placeholder="e.g. 351 92 STREET, 400 N REDFIELD, 3601 5TH AVE"
+         value="{{ q or '' }}" minlength="3" required autofocus>
+  <button type="submit" class="st-btn">Search</button>
+</form>
+
+<div id="loading" class="htmx-indicator">Searching…</div>
+<div id="results">
+  {% if q %}
+  {% include "partials/search_results.html" %}
+  {% endif %}
+</div>
+{% endblock %}

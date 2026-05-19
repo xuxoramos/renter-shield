@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Register — Investigator{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+  <h1>Investigator Registration</h1>
+  <p class="muted">Access the owner-centric harm-score explorer. Registration required for audit trail purposes.</p>
+
+  {% if error %}
+  <div class="st-warning">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" action="/investigator/register" class="auth-form">
+    <label for="name">Full name</label>
+    <input type="text" id="name" name="name" required minlength="2" placeholder="Jane Smith">
+
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" required placeholder="jane@agency.gov">
+
+    <label for="role">Role / Organisation <span class="optional">(optional)</span></label>
+    <input type="text" id="role" name="role" placeholder="Investigator, attorney, housing agency...">
+
+    <label class="checkbox-label">
+      <input type="checkbox" name="agree" required>
+      I agree this tool is for informational purposes only and does not constitute legal advice or findings.
+    </label>
+
+    <button type="submit" class="st-btn">Register</button>
+  </form>
+
+  <hr class="st-hr">
+
+  <details class="expander">
+    <summary>Already have a token?</summary>
+    <div class="body">
+      <form method="post" action="/investigator/token-login" class="auth-form">
+        <label for="token">Paste your investigator token</label>
+        <input type="text" id="token" name="token" required placeholder="abc123def456...">
+        <button type="submit" class="st-btn st-btn-outline">Sign in</button>
+      </form>
+    </div>
+  </details>
+</div>
+{% endblock %}

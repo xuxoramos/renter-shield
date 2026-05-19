@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ display_jur }} — Investigator{% endblock %}
+
+{% block content %}
+<p><a href="/investigator/">&larr; All jurisdictions</a></p>
+
+<h1>🏚️ {{ display_jur }}{% if is_unscored %} ⚠️{% endif %}</h1>
+<p class="disclaimer">
+  Scores are derived from publicly available government records. Independent
+  verification is required before any legal or administrative action.
+</p>
+
+{% if is_unscored %}
+<div class="st-warning">
+  <strong>No owner data available.</strong> This jurisdiction has violation and
+  property records but no publicly available owner/contact data. Landlord harm
+  scores cannot be computed.
+</div>
+
+<div class="metrics">
+  <div class="metric"><div class="value">{{ "{:,}".format(stats.properties) }}</div><div class="label">Properties</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(stats.violations) }}</div><div class="label">Violations</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(stats.critical) }}</div><div class="label">Critical</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(stats.open) }}</div><div class="label">Open</div></div>
+</div>
+
+{% else %}
+
+<!-- Metrics -->
+<div class="metrics">
+  <div class="metric"><div class="value">{{ "{:,}".format(stats.owners) }}</div><div class="label">Scored Owners</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(stats.violations) }}</div><div class="label">Violations</div></div>
+  <div class="metric"><div class="value">{{ "{:,}".format(stats.critical) }}</div><div class="label">Critical</div></div>
+  <div class="metric"><div class="value">{{ "{:,.0f}".format(stats.avg_score) }}</div><div class="label">Avg Score</div></div>
+  <div class="metric"><div class="value">{{ "{:,.0f}".format(stats.max_score) }}</div><div class="label">Max Score</div></div>
+</div>
+
+<!-- Confidence breakdown -->
+{% if confidence_counts %}
+<p class="muted" style="margin-top:1rem;"><strong>Ownership match confidence:</strong></p>
+<div class="metrics">
+  {% for c in confidence_counts %}
+  <div class="metric">
+    <div class="value">{{ "{:,}".format(c.count) }}</div>
+    <div class="label">{{ c.emoji }} {{ c.level|title }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<hr class="st-hr">
+
+<!-- Filters -->
+<h2>Ranked Owners</h2>
+<form class="filter-row" hx-get="/investigator/jurisdiction/{{ jur_code }}/owners" hx-target="#owners-table" hx-indicator="#tbl-loading" hx-push-url="false">
+  <div class="filter-group">
+    <label>Min score</label>
+    <input type="number" name="min_score" value="{{ filters.min_score or 0 }}" min="0" step="100">
+  </div>
+  <div class="filter-group">
+    <label>Min properties</label>
+    <input type="number" name="min_props" value="{{ filters.min_props or 3 }}" min="1" max="50">
+  </div>
+  <div class="filter-group">
+    <label>Name search</label>
+    <input type="text" name="name" value="{{ filters.name or '' }}" placeholder="e.g. SMITH">
+  </div>
+  <button type="submit" class="st-btn" style="align-self:flex-end;">Filter</button>
+</form>
+
+<div id="tbl-loading" class="htmx-indicator">Loading…</div>
+<div id="owners-table">
+  {% include "partials/inv_owners_table.html" %}
+</div>
+{% endif %}
+{% endblock %}
