@@ -29,6 +29,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Security
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates as _Tmpl
 
 from renter_shield.config import SEVERITY_POINTS
 from renter_shield import audit
@@ -708,9 +709,6 @@ app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 # ---------------------------------------------------------------------------
 # Custom error handlers for HTML pages
 # ---------------------------------------------------------------------------
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.templating import Jinja2Templates as _Tmpl
-
 _web_templates = _Tmpl(directory=str(Path(__file__).parent / "templates"))
 
 

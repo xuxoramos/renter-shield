@@ -14,7 +14,7 @@ import os
 import tempfile
 from datetime import date
 from pathlib import Path
-from urllib.parse import quote, unquote
+from urllib.parse import quote
 
 import polars as pl
 import pytest
@@ -97,7 +97,6 @@ def client(data_dir):
     os.environ["LI_API_KEYS"] = "test-renter-key:renter,test-inv-key:investigator"
 
     # Force reimport so the app picks up new env vars
-    import importlib
     import renter_shield.web
     import renter_shield.api
 

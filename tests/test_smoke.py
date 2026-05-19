@@ -8,8 +8,6 @@ from renter_shield.config import (
     SCORE_WEIGHTS,
     SEVERITY_POINTS,
     SVI_THEMES,
-    MIN_DATE,
-    MIN_JURISDICTION_SIZE,
 )
 from renter_shield.models import VIOLATIONS_SCHEMA, PROPERTIES_SCHEMA, CONTACTS_SCHEMA
 

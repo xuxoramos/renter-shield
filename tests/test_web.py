@@ -82,7 +82,6 @@ def client(data_dir):
     os.environ["LI_OUTPUT_DIR"] = str(data_dir)
     os.environ["LI_API_KEYS"] = "unused:renter"
 
-    import importlib
     import renter_shield.web
     import renter_shield.api
 
