@@ -50,11 +50,15 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          ssh -i ~/.ssh/deploy_key root@"$HOST" << DEPLOY
+          ssh -i ~/.ssh/deploy_key \
+            -o ServerAliveInterval=60 \
+            -o ServerAliveCountMax=10 \
+            root@"$HOST" << DEPLOY
             set -e
 
             # First deploy: clone; subsequent: pull
             if [ ! -d /opt/renter-shield/.git ]; then
+              mkdir -p /opt/renter-shield
               cd /opt/renter-shield
               git init
               git remote add origin https://github.com/xuxoramos/renter-shield.git
