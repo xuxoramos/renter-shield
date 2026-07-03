@@ -75,13 +75,11 @@ jobs:
           EOF
 
             # Install Python tooling if needed, then run pipeline in a venv
-            if ! command -v python3 >/dev/null 2>&1 || ! python3 -m venv --help >/dev/null 2>&1; then
+            if ! command -v python3 >/dev/null 2>&1 \
+              || ! python3 -m venv --help >/dev/null 2>&1 \
+              || ! python3 -m pip --version >/dev/null 2>&1; then
               apt-get update
-              apt-get install -y python3 python3-venv
-            fi
-            if ! python3 -m pip --version >/dev/null 2>&1; then
-              apt-get update
-              apt-get install -y python3-pip
+              apt-get install -y python3 python3-venv python3-pip
             fi
 
             python3 -m venv .venv
