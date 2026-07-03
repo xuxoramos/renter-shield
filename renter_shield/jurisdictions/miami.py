@@ -79,9 +79,13 @@ def _arcgis_paginated_get(
     where: str = "1=1",
     out_fields: str = "*",
     page_size: int = _PAGE_SIZE,
-) -> list[dict]:
-    """Fetch all features from an ArcGIS FeatureServer using offset pagination."""
-    all_features: list[dict] = []
+) -> pl.DataFrame:
+    """Fetch all features from an ArcGIS FeatureServer using offset pagination.
+
+    Accumulates Arrow-backed DataFrames per batch rather than Python dicts
+    to keep peak memory proportional to one page, not the full dataset.
+    """
+    batches: list[pl.DataFrame] = []
     offset = 0
     while True:
         params = (
@@ -109,12 +113,13 @@ def _arcgis_paginated_get(
         features = data.get("features", [])
         if not features:
             break
-        all_features.extend(f["attributes"] for f in features)
-        print(f"  fetched {len(all_features)} features…")
+        batches.append(pl.DataFrame([f["attributes"] for f in features]))
+        total = sum(len(b) for b in batches)
+        print(f"  fetched {total} features…")
         if not data.get("exceededTransferLimit", False) and len(features) < page_size:
             break
         offset += len(features)
-    return all_features
+    return pl.concat(batches) if batches else pl.DataFrame()
 
 
 class MiamiAdapter(JurisdictionAdapter):
@@ -130,27 +135,25 @@ class MiamiAdapter(JurisdictionAdapter):
         # CASE_DATE is esriFieldTypeDate — use TIMESTAMP literal
         cc_where = f"CASE_DATE >= TIMESTAMP '{MIN_DATE}'"
         print("[miami] downloading code compliance violations (ArcGIS paginated)…")
-        cc_rows = _arcgis_paginated_get(_CCVIOL_URL, where=cc_where)
-        print(f"[miami] code compliance: {len(cc_rows)} rows")
+        cc_df = _arcgis_paginated_get(_CCVIOL_URL, where=cc_where)
+        print(f"[miami] code compliance: {len(cc_df)} rows")
 
-        if cc_rows:
-            df_cc = pl.DataFrame(cc_rows)
+        if not cc_df.is_empty():
             out = self.data_dir / "miami_ccviol.parquet"
-            df_cc.write_parquet(out, compression="zstd", compression_level=3)
-            print(f"[miami] saved {len(df_cc)} rows → {out}")
+            cc_df.write_parquet(out, compression="zstd", compression_level=3)
+            print(f"[miami] saved {len(cc_df)} rows → {out}")
 
         # Building Violations
         # OPEN_DATE is esriFieldTypeDate — use TIMESTAMP literal
         bv_where = f"OPEN_DATE >= TIMESTAMP '{MIN_DATE}'"
         print("[miami] downloading building violations (ArcGIS paginated)…")
-        bv_rows = _arcgis_paginated_get(_BUILDING_URL, where=bv_where)
-        print(f"[miami] building violations: {len(bv_rows)} rows")
+        bv_df = _arcgis_paginated_get(_BUILDING_URL, where=bv_where)
+        print(f"[miami] building violations: {len(bv_df)} rows")
 
-        if bv_rows:
-            df_bv = pl.DataFrame(bv_rows)
+        if not bv_df.is_empty():
             out = self.data_dir / "miami_building.parquet"
-            df_bv.write_parquet(out, compression="zstd", compression_level=3)
-            print(f"[miami] saved {len(df_bv)} rows → {out}")
+            bv_df.write_parquet(out, compression="zstd", compression_level=3)
+            print(f"[miami] saved {len(bv_df)} rows → {out}")
 
     # ------------------------------------------------------------------
     # load_violations

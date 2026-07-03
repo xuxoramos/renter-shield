@@ -51,10 +51,15 @@ _TIER3_DESCRIPTIONS = ["property abatement", "land use"]
 
 
 def _paginated_get(client, dataset_id: str, *, where: str | None = None,
-                   page_size: int = _SOCRATA_PAGE_SIZE) -> list[dict]:
-    """Fetch all rows from a Socrata dataset using offset pagination."""
+                   page_size: int = _SOCRATA_PAGE_SIZE) -> pl.DataFrame:
+    """Fetch all rows from a Socrata dataset using offset pagination.
+
+    Accumulates Arrow-backed DataFrames per batch rather than Python dicts
+    to keep peak memory proportional to one page, not the full dataset.
+    """
     client.timeout = _SOCRATA_TIMEOUT
-    all_rows: list[dict] = []
+    batches: list[pl.DataFrame] = []
+    total = 0
     offset = 0
     while True:
         for attempt in range(1, _SOCRATA_RETRIES + 1):
@@ -75,12 +80,13 @@ def _paginated_get(client, dataset_id: str, *, where: str | None = None,
                 time.sleep(wait)
         if not batch:
             break
-        all_rows.extend(batch)
-        print(f"  fetched {len(all_rows)} rows so far…")
+        batches.append(pl.DataFrame(batch))
+        total += len(batch)
+        print(f"  fetched {total} rows so far…")
         if len(batch) < page_size:
             break
         offset += len(batch)
-    return all_rows
+    return pl.concat(batches) if batches else pl.DataFrame()
 
 
 class AustinAdapter(JurisdictionAdapter):
@@ -101,14 +107,13 @@ class AustinAdapter(JurisdictionAdapter):
         where = f"opened_date >= '{MIN_DATE}'"
 
         print("[austin] downloading code complaint cases (paginated)…")
-        rows = _paginated_get(client, _DATASET_ID, where=where)
-        print(f"[austin] total rows: {len(rows)}")
+        df = _paginated_get(client, _DATASET_ID, where=where)
+        print(f"[austin] total rows: {len(df)}")
 
-        if not rows:
+        if df.is_empty():
             print("[austin] WARNING: no rows returned")
             return
 
-        df = pl.DataFrame(rows)
         out = self.data_dir / "austin_cases.parquet"
         df.write_parquet(out, compression="zstd", compression_level=3)
         print(f"[austin] saved {len(df)} rows → {out}")

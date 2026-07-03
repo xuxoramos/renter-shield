@@ -76,10 +76,15 @@ _TIER3_KEYWORDS = [
 
 def _paginated_socrata_get(
     client, dataset_id: str, *, where: str | None = None
-) -> list[dict]:
-    """Fetch all rows from a Socrata dataset with retry + pagination."""
+) -> pl.DataFrame:
+    """Fetch all rows from a Socrata dataset with retry + pagination.
+
+    Accumulates Arrow-backed DataFrames per batch rather than Python dicts
+    to keep peak memory proportional to one page, not the full dataset.
+    """
     client.timeout = _TIMEOUT
-    all_rows: list[dict] = []
+    batches: list[pl.DataFrame] = []
+    total = 0
     offset = 0
     while True:
         for attempt in range(1, _RETRIES + 1):
@@ -98,12 +103,13 @@ def _paginated_socrata_get(
                 time.sleep(2 ** attempt)
         if not batch:
             break
-        all_rows.extend(batch)
-        print(f"  fetched {len(all_rows)} rows so far…")
+        batches.append(pl.DataFrame(batch))
+        total += len(batch)
+        print(f"  fetched {total} rows so far…")
         if len(batch) < _PAGE_SIZE:
             break
         offset += len(batch)
-    return all_rows
+    return pl.concat(batches) if batches else pl.DataFrame()
 
 
 class BatonRougeAdapter(JurisdictionAdapter):
@@ -126,38 +132,34 @@ class BatonRougeAdapter(JurisdictionAdapter):
             f"AND createdate >= '{MIN_DATE}'"
         )
         print("[baton_rouge] downloading 311 code/blight complaints…")
-        rows = _paginated_socrata_get(client, _311_ID, where=where)
-        df = pl.DataFrame(rows)
+        df = _paginated_socrata_get(client, _311_ID, where=where)
         out = self.data_dir / "baton_rouge_violations.parquet"
         df.write_parquet(out, compression="zstd", compression_level=3)
         print(f"[baton_rouge] saved {len(df)} violation rows → {out}")
 
         # 2. Property Information (address → lot_id mapping)
         print("[baton_rouge] downloading property info…")
-        rows = _paginated_socrata_get(client, _PROPERTY_INFO_ID)
-        df = pl.DataFrame(rows)
+        df = _paginated_socrata_get(client, _PROPERTY_INFO_ID)
         out = self.data_dir / "baton_rouge_properties.parquet"
         df.write_parquet(out, compression="zstd", compression_level=3)
         print(f"[baton_rouge] saved {len(df)} property rows → {out}")
 
         # 3. Tax Roll (owner names — only most recent tax year)
         print("[baton_rouge] downloading tax roll (latest year)…")
-        rows = _paginated_socrata_get(
+        df = _paginated_socrata_get(
             client, _TAX_ROLL_ID,
             where="tax_year = '2025' AND unit_type = 'IMPROVEMENT'",
         )
-        df = pl.DataFrame(rows)
         out = self.data_dir / "baton_rouge_tax_roll.parquet"
         df.write_parquet(out, compression="zstd", compression_level=3)
         print(f"[baton_rouge] saved {len(df)} tax roll rows → {out}")
 
         # 4. Building Permits (fallback owner via ownername field)
         print("[baton_rouge] downloading building permits…")
-        rows = _paginated_socrata_get(
+        df = _paginated_socrata_get(
             client, _PERMITS_ID,
             where=f"issueddate >= '{MIN_DATE}'",
         )
-        df = pl.DataFrame(rows)
         out = self.data_dir / "baton_rouge_permits.parquet"
         df.write_parquet(out, compression="zstd", compression_level=3)
         print(f"[baton_rouge] saved {len(df)} permit rows → {out}")
