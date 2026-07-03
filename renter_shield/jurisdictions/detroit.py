@@ -86,6 +86,7 @@ def _arcgis_paginated_get(
     types (e.g. zip_code returned as int for US addresses, str for Canadian).
     """
     batches: list[pl.DataFrame] = []
+    total = 0
     offset = 0
     while True:
         params = (
@@ -118,7 +119,7 @@ def _arcgis_paginated_get(
             infer_schema_length=None,
         ).select(pl.all().cast(pl.Utf8, strict=False))
         batches.append(batch_df)
-        total = sum(len(b) for b in batches)
+        total += len(features)
         if total % 10_000 < page_size:
             print(f"  fetched {total} features…")
         if not data.get("exceededTransferLimit", False) and len(features) < page_size:

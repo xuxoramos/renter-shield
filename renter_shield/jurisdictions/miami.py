@@ -86,6 +86,7 @@ def _arcgis_paginated_get(
     to keep peak memory proportional to one page, not the full dataset.
     """
     batches: list[pl.DataFrame] = []
+    total = 0
     offset = 0
     while True:
         params = (
@@ -114,7 +115,7 @@ def _arcgis_paginated_get(
         if not features:
             break
         batches.append(pl.DataFrame([f["attributes"] for f in features]))
-        total = sum(len(b) for b in batches)
+        total += len(features)
         print(f"  fetched {total} features…")
         if not data.get("exceededTransferLimit", False) and len(features) < page_size:
             break
