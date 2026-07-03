@@ -102,4 +102,5 @@ JURISDICTION_REGISTRY: dict[str, str] = {
     "austin": "renter_shield.jurisdictions.austin.AustinAdapter",
     "miami": "renter_shield.jurisdictions.miami.MiamiAdapter",
     "detroit": "renter_shield.jurisdictions.detroit.DetroitAdapter",
+    "baton_rouge": "renter_shield.jurisdictions.baton_rouge.BatonRougeAdapter",
 }
