@@ -57,8 +57,12 @@ def _download_ckan_resource(
     resource_id: str, out_path: Path, limit: int = 500_000,
     filters: dict | None = None,
 ) -> int:
-    """Download all records from a CKAN datastore resource in batches."""
-    all_records: list[dict] = []
+    """Download all records from a CKAN datastore resource in batches.
+
+    Accumulates Arrow-backed DataFrames per batch rather than Python dicts
+    to keep peak memory proportional to one page, not the full dataset.
+    """
+    batches: list[pl.DataFrame] = []
     offset = 0
     batch_size = 32_000  # CKAN default max is 32K per request
 
@@ -78,10 +82,10 @@ def _download_ckan_resource(
         records = data["result"]["records"]
         if not records:
             break
-        all_records.extend(records)
+        batches.append(pl.DataFrame(records))
         offset += len(records)
 
-    df = pl.DataFrame(all_records)
+    df = pl.concat(batches) if batches else pl.DataFrame()
     df.write_parquet(out_path, compression="zstd", compression_level=3)
     return len(df)
 

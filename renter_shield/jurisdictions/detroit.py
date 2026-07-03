@@ -77,9 +77,16 @@ def _arcgis_paginated_get(
     where: str = "1=1",
     out_fields: str = "*",
     page_size: int = _PAGE_SIZE,
-) -> list[dict]:
-    """Fetch all features from an ArcGIS FeatureServer using offset pagination."""
-    all_features: list[dict] = []
+) -> pl.DataFrame:
+    """Fetch all features from an ArcGIS FeatureServer using offset pagination.
+
+    Accumulates Arrow-backed DataFrames per batch rather than Python dicts
+    to keep peak memory proportional to one page, not the full dataset.
+    Each batch is cast to Utf8 immediately to normalise mixed numeric/string
+    types (e.g. zip_code returned as int for US addresses, str for Canadian).
+    """
+    batches: list[pl.DataFrame] = []
+    total = 0
     offset = 0
     while True:
         params = (
@@ -107,13 +114,18 @@ def _arcgis_paginated_get(
         features = data.get("features", [])
         if not features:
             break
-        all_features.extend(f["attributes"] for f in features)
-        if len(all_features) % 10_000 < page_size:
-            print(f"  fetched {len(all_features)} features…")
+        batch_df = pl.DataFrame(
+            [f["attributes"] for f in features],
+            infer_schema_length=None,
+        ).select(pl.all().cast(pl.Utf8, strict=False))
+        batches.append(batch_df)
+        total += len(features)
+        if total % 10_000 < page_size:
+            print(f"  fetched {total} features…")
         if not data.get("exceededTransferLimit", False) and len(features) < page_size:
             break
         offset += len(features)
-    return all_features
+    return pl.concat(batches) if batches else pl.DataFrame()
 
 
 class DetroitAdapter(JurisdictionAdapter):
@@ -129,21 +141,13 @@ class DetroitAdapter(JurisdictionAdapter):
         # Also cap at 2026-12-31 to exclude data-entry errors (years 3016, etc.)
         where = f"ticket_issued_date >= DATE '{MIN_DATE}' AND ticket_issued_date <= DATE '2026-12-31'"
         print("[detroit] downloading blight tickets (ArcGIS paginated)…")
-        rows = _arcgis_paginated_get(_BLIGHT_URL, where=where)
-        print(f"[detroit] total rows: {len(rows)}")
+        df = _arcgis_paginated_get(_BLIGHT_URL, where=where)
+        print(f"[detroit] total rows: {len(df)}")
 
-        if not rows:
+        if df.is_empty():
             print("[detroit] WARNING: no rows returned")
             return
 
-        # Normalize all values to strings — ArcGIS returns mixed types
-        # (e.g. zip_code as int for US, string for Canadian addresses)
-        for row in rows:
-            for k, v in row.items():
-                if v is not None and not isinstance(v, str):
-                    row[k] = str(v)
-
-        df = pl.DataFrame(rows, infer_schema_length=None)
         out = self.data_dir / "detroit_blight.parquet"
         df.write_parquet(out, compression="zstd", compression_level=3)
         print(f"[detroit] saved {len(df)} rows → {out}")

@@ -30,11 +30,16 @@ _SOCRATA_RETRIES = 3
 
 
 def _paginated_socrata_get(client, dataset_id: str, *, where: str | None = None,
-                           page_size: int = _SOCRATA_PAGE_SIZE) -> list[dict]:
-    """Fetch all rows from a Socrata dataset using offset pagination."""
+                           page_size: int = _SOCRATA_PAGE_SIZE) -> pl.DataFrame:
+    """Fetch all rows from a Socrata dataset using offset pagination.
+
+    Accumulates Arrow-backed DataFrames per batch rather than Python dicts
+    to keep peak memory proportional to one page, not the full dataset.
+    """
     import time
     client.timeout = _SOCRATA_TIMEOUT
-    all_rows: list[dict] = []
+    batches: list[pl.DataFrame] = []
+    total = 0
     offset = 0
     while True:
         for attempt in range(1, _SOCRATA_RETRIES + 1):
@@ -55,12 +60,13 @@ def _paginated_socrata_get(client, dataset_id: str, *, where: str | None = None,
                 time.sleep(wait)
         if not batch:
             break
-        all_rows.extend(batch)
-        print(f"  fetched {len(all_rows)} rows so far…")
+        batches.append(pl.DataFrame(batch))
+        total += len(batch)
+        print(f"  fetched {total} rows so far…")
         if len(batch) < page_size:
             break
         offset += len(batch)
-    return all_rows
+    return pl.concat(batches) if batches else pl.DataFrame()
 
 
 # Socrata dataset identifiers
@@ -112,11 +118,10 @@ class ChicagoAdapter(JurisdictionAdapter):
 
         # Violations — paginated to get all records
         print("[chicago] downloading violations (paginated)…")
-        rows = _paginated_socrata_get(
+        df = _paginated_socrata_get(
             client, _VIOLATIONS_ID,
             where=f"violation_date >= '{MIN_DATE}'",
         )
-        df = pl.DataFrame(rows)
         out = self.data_dir / "chicago_violations.parquet"
         df.write_parquet(out, compression="zstd", compression_level=3)
         print(f"[chicago] saved {len(df)} violation rows → {out}")

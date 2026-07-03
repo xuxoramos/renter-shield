@@ -61,10 +61,15 @@ _TIER3_CASE_TYPES = ["general", "pace", "nar", "veip", "frp", "lea", "ihtf", "xx
 
 
 def _paginated_get(client, dataset_id: str, *, where: str | None = None,
-                   page_size: int = _SOCRATA_PAGE_SIZE) -> list[dict]:
-    """Fetch all rows from a Socrata dataset using offset pagination."""
+                   page_size: int = _SOCRATA_PAGE_SIZE) -> pl.DataFrame:
+    """Fetch all rows from a Socrata dataset using offset pagination.
+
+    Accumulates Arrow-backed DataFrames per batch rather than Python dicts
+    to keep peak memory proportional to one page, not the full dataset.
+    """
     client.timeout = _SOCRATA_TIMEOUT
-    all_rows: list[dict] = []
+    batches: list[pl.DataFrame] = []
+    total = 0
     offset = 0
     while True:
         for attempt in range(1, _SOCRATA_RETRIES + 1):
@@ -85,12 +90,13 @@ def _paginated_get(client, dataset_id: str, *, where: str | None = None,
                 time.sleep(wait)
         if not batch:
             break
-        all_rows.extend(batch)
-        print(f"  fetched {len(all_rows)} rows so far…")
+        batches.append(pl.DataFrame(batch))
+        total += len(batch)
+        print(f"  fetched {total} rows so far…")
         if len(batch) < page_size:
             break
         offset += len(batch)
-    return all_rows
+    return pl.concat(batches) if batches else pl.DataFrame()
 
 
 class LAAdapter(JurisdictionAdapter):
@@ -115,21 +121,20 @@ class LAAdapter(JurisdictionAdapter):
 
         # Open cases
         print("[la] downloading open enforcement cases (paginated)…")
-        open_rows = _paginated_get(client, _OPEN_CASES_ID, where=where)
-        print(f"[la] open cases: {len(open_rows)} rows")
+        open_df = _paginated_get(client, _OPEN_CASES_ID, where=where)
+        print(f"[la] open cases: {len(open_df)} rows")
 
         # Closed cases
         print("[la] downloading closed enforcement cases (paginated)…")
-        closed_rows = _paginated_get(client, _CLOSED_CASES_ID, where=where)
-        print(f"[la] closed cases: {len(closed_rows)} rows")
+        closed_df = _paginated_get(client, _CLOSED_CASES_ID, where=where)
+        print(f"[la] closed cases: {len(closed_df)} rows")
 
         # Combine and save
-        all_rows = open_rows + closed_rows
-        if not all_rows:
+        if open_df.is_empty() and closed_df.is_empty():
             print("[la] WARNING: no rows returned from either dataset")
             return
 
-        df = pl.DataFrame(all_rows)
+        df = pl.concat([open_df, closed_df])
         out = self.data_dir / "la_cases.parquet"
         df.write_parquet(out, compression="zstd", compression_level=3)
         print(f"[la] saved {len(df)} rows → {out}")

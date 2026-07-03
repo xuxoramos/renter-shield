@@ -71,9 +71,13 @@ _OUT_FIELDS = ",".join([
 _PAGE_SIZE = 2000
 
 
-def _fetch_all_features() -> list[dict]:
-    """Page through the ArcGIS Feature Service and collect all records."""
-    all_features: list[dict] = []
+def _fetch_all_features() -> pl.DataFrame:
+    """Page through the ArcGIS Feature Service and collect all records.
+
+    Accumulates Arrow-backed DataFrames per batch rather than Python dicts
+    to keep peak memory proportional to one page, not the full dataset.
+    """
+    batches: list[pl.DataFrame] = []
     offset = 0
 
     while True:
@@ -92,15 +96,14 @@ def _fetch_all_features() -> list[dict]:
         if not features:
             break
 
-        for f in features:
-            all_features.append(f["attributes"])
+        batches.append(pl.DataFrame([f["attributes"] for f in features]))
 
         # ArcGIS signals last page when exceededTransferLimit is absent/false
         if not data.get("exceededTransferLimit", False):
             break
         offset += len(features)
 
-    return all_features
+    return pl.concat(batches) if batches else pl.DataFrame()
 
 
 class HUDREACAdapter(JurisdictionAdapter):
@@ -113,8 +116,7 @@ class HUDREACAdapter(JurisdictionAdapter):
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
         print("[hud_reac] downloading Multifamily Assisted properties…")
-        features = _fetch_all_features()
-        df = pl.DataFrame(features)
+        df = _fetch_all_features()
 
         # Convert epoch-ms dates to ISO strings for consistent handling
         for date_col in ["REAC_LAST_INSPECTION_DATE"]:
