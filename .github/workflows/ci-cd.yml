@@ -74,6 +74,11 @@ jobs:
           LI_OUTPUT_DIR=/app/output
           EOF
 
+            # Install deps and run pipeline (download + score)
+            pip install -e ".[dev]" -q
+            python -m renter_shield.cli --download
+            mkdir -p output
+
             # Build and restart
             cd deploy
             docker compose up -d --build --force-recreate --remove-orphans
