@@ -60,7 +60,10 @@ def _paginated_get(client, dataset_id: str, *, where: str | None = None,
         if len(batch) < page_size:
             break
         offset += len(batch)
-    return pl.concat(batches) if batches else pl.DataFrame()
+    # Use diagonal_relaxed to tolerate schema drift across pages (Socrata may
+    # omit columns that are entirely null in a given page, causing column-name
+    # mismatches between batches).  Missing columns are filled with nulls.
+    return pl.concat(batches, how="diagonal_relaxed") if batches else pl.DataFrame()
 
 
 def _make_bbl(df: pl.LazyFrame, boro: str, block: str, lot: str) -> pl.LazyFrame:
