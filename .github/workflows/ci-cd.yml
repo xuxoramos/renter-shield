@@ -74,9 +74,19 @@ jobs:
           LI_OUTPUT_DIR=/app/output
           EOF
 
-            # Install deps and run pipeline (download + score)
-            pip install -e ".[dev]" -q
-            python -m renter_shield.cli --download
+            # Install Python tooling if needed, then run pipeline in a venv
+            if ! command -v python3 >/dev/null 2>&1 || ! python3 -m venv --help >/dev/null 2>&1; then
+              apt-get update
+              apt-get install -y python3 python3-venv
+            fi
+            if ! python3 -m pip --version >/dev/null 2>&1; then
+              apt-get update
+              apt-get install -y python3-pip
+            fi
+
+            python3 -m venv .venv
+            ./.venv/bin/python -m pip install -e ".[dev]" -q
+            ./.venv/bin/python -m renter_shield.cli --download
             mkdir -p output
 
             # Build and restart
