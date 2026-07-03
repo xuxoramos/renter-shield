@@ -83,7 +83,7 @@ jobs:
             fi
 
             python3 -m venv .venv
-            ./.venv/bin/python -m pip install -e ".[dev]" -q
+            ./.venv/bin/python -m pip install -e ".[dev,download]" -q
             ./.venv/bin/python -m renter_shield.cli --download
             mkdir -p output
 

@@ -324,6 +324,8 @@ files directly for scoring and API serving.
 pip install .
 # or in development
 pip install -e .
+# include automatic-download support for Socrata-backed jurisdictions
+pip install -e ".[download]"
 ```
 
 ## Usage
