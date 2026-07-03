@@ -20,6 +20,7 @@ class JurisdictionAdapter(abc.ABC):
 
     def __init__(self, data_dir: Path) -> None:
         self.data_dir = data_dir
+        self.data_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
     # Optional: download raw data (CSV / API) into data_dir
