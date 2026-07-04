@@ -24,6 +24,7 @@ Join strategy:
 
 from __future__ import annotations
 
+import os
 import time
 
 import polars as pl
@@ -109,7 +110,7 @@ def _paginated_socrata_get(
         if len(batch) < _PAGE_SIZE:
             break
         offset += len(batch)
-    return pl.concat(batches) if batches else pl.DataFrame()
+    return pl.concat(batches, how="diagonal_relaxed") if batches else pl.DataFrame()
 
 
 class BatonRougeAdapter(JurisdictionAdapter):
@@ -124,7 +125,7 @@ class BatonRougeAdapter(JurisdictionAdapter):
         except ImportError as exc:
             raise ImportError("pip install sodapy to use automatic download") from exc
 
-        client = Socrata("data.brla.gov", None)
+        client = Socrata("data.brla.gov", os.environ.get("SOCRATA_APP_TOKEN"))
 
         # 1. 311 violations (code + blight only, since MIN_DATE)
         where = (

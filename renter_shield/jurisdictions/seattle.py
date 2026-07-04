@@ -18,6 +18,7 @@ are returned as an empty frame with the correct schema.
 
 from __future__ import annotations
 
+import os
 import time
 
 import polars as pl
@@ -102,7 +103,7 @@ def _paginated_get(client, dataset_id: str, *, where: str | None = None,
         if len(batch) < page_size:
             break
         offset += len(batch)
-    return pl.concat(batches) if batches else pl.DataFrame()
+    return pl.concat(batches, how="diagonal_relaxed") if batches else pl.DataFrame()
 
 
 class SeattleAdapter(JurisdictionAdapter):
@@ -118,7 +119,7 @@ class SeattleAdapter(JurisdictionAdapter):
             raise ImportError("pip install sodapy to use automatic download") from exc
 
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        client = Socrata("data.seattle.gov", None)
+        client = Socrata("data.seattle.gov", os.environ.get("SOCRATA_APP_TOKEN"))
 
         # All complaints and violations since MIN_DATE, no geographic filter
         print("[seattle] downloading code complaints & violations (paginated)…")

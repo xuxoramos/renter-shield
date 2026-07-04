@@ -103,7 +103,7 @@ def _fetch_all_features() -> pl.DataFrame:
             break
         offset += len(features)
 
-    return pl.concat(batches) if batches else pl.DataFrame()
+    return pl.concat(batches, how="diagonal_relaxed") if batches else pl.DataFrame()
 
 
 class HUDREACAdapter(JurisdictionAdapter):

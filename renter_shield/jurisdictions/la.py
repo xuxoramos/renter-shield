@@ -33,6 +33,7 @@ Case types and severity mapping rationale:
 
 from __future__ import annotations
 
+import os
 import time
 
 import polars as pl
@@ -96,7 +97,7 @@ def _paginated_get(client, dataset_id: str, *, where: str | None = None,
         if len(batch) < page_size:
             break
         offset += len(batch)
-    return pl.concat(batches) if batches else pl.DataFrame()
+    return pl.concat(batches, how="diagonal_relaxed") if batches else pl.DataFrame()
 
 
 class LAAdapter(JurisdictionAdapter):
@@ -112,7 +113,7 @@ class LAAdapter(JurisdictionAdapter):
             raise ImportError("pip install sodapy to use automatic download") from exc
 
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        client = Socrata("data.lacity.org", None)
+        client = Socrata("data.lacity.org", os.environ.get("SOCRATA_APP_TOKEN"))
 
         where = (
             f"adddttm >= '{MIN_DATE}' AND "

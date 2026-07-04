@@ -125,7 +125,7 @@ def _arcgis_paginated_get(
         if not data.get("exceededTransferLimit", False) and len(features) < page_size:
             break
         offset += len(features)
-    return pl.concat(batches) if batches else pl.DataFrame()
+    return pl.concat(batches, how="diagonal_relaxed") if batches else pl.DataFrame()
 
 
 class DetroitAdapter(JurisdictionAdapter):

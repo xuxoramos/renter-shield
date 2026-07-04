@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import polars as pl
@@ -93,7 +94,7 @@ class NYCAdapter(JurisdictionAdapter):
         except ImportError as exc:
             raise ImportError("pip install sodapy to use automatic download") from exc
 
-        client = Socrata("data.cityofnewyork.us", None)
+        client = Socrata("data.cityofnewyork.us", os.environ.get("SOCRATA_APP_TOKEN"))
 
         datasets = {
             "hpd_violations": {

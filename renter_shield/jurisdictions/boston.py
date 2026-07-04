@@ -85,7 +85,7 @@ def _download_ckan_resource(
         batches.append(pl.DataFrame(records))
         offset += len(records)
 
-    df = pl.concat(batches) if batches else pl.DataFrame()
+    df = pl.concat(batches, how="diagonal_relaxed") if batches else pl.DataFrame()
     df.write_parquet(out_path, compression="zstd", compression_level=3)
     return len(df)
 

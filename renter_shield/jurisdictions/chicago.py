@@ -17,6 +17,7 @@ network resolver can group them.
 
 from __future__ import annotations
 
+import os
 
 import polars as pl
 
@@ -66,7 +67,7 @@ def _paginated_socrata_get(client, dataset_id: str, *, where: str | None = None,
         if len(batch) < page_size:
             break
         offset += len(batch)
-    return pl.concat(batches) if batches else pl.DataFrame()
+    return pl.concat(batches, how="diagonal_relaxed") if batches else pl.DataFrame()
 
 
 # Socrata dataset identifiers
@@ -114,7 +115,7 @@ class ChicagoAdapter(JurisdictionAdapter):
         except ImportError as exc:
             raise ImportError("pip install sodapy to use automatic download") from exc
 
-        client = Socrata("data.cityofchicago.org", None)
+        client = Socrata("data.cityofchicago.org", os.environ.get("SOCRATA_APP_TOKEN"))
 
         # Violations — paginated to get all records
         print("[chicago] downloading violations (paginated)…")
