@@ -1,0 +1,25 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:  # manual trigger
+  schedule:
+    - cron: "0 5 * * 1"  # every Monday at 05:00 UTC (before the 06:00 data refresh)
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev,download]"
+
+      - name: Run integration tests (live jurisdiction APIs)
+        env:
+          SOCRATA_APP_TOKEN: ${{ secrets.SOCRATA_APP_TOKEN }}
+        run: pytest -m integration -v

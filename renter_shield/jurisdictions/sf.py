@@ -146,14 +146,18 @@ class SFAdapter(JurisdictionAdapter):
         # Violation ID: primary_key (unique per complaint row)
         vid_expr = pl.col("primary_key").cast(pl.Utf8)
 
-        # Severity by code_violation_desc + unsafe_building flag keyword matching
-        desc_lower = pl.col("code_violation_desc").str.to_lowercase().fill_null("")
-        unsafe = pl.col("unsafe_building").str.to_lowercase().fill_null("")
-        combined_desc = desc_lower + pl.lit(" ") + unsafe
+        # Severity by NOV description keyword matching.  SF's DBI complaints
+        # dataset describes each violation via two free-text fields:
+        #   nov_category_description — higher-level grouping (e.g. "building section")
+        #   nov_item_description     — specific item text
+        # The dataset has no dedicated "unsafe building" flag, so severity is
+        # derived from keywords across both description fields.
+        category = pl.col("nov_category_description").str.to_lowercase().fill_null("")
+        item = pl.col("nov_item_description").str.to_lowercase().fill_null("")
+        combined_desc = category + pl.lit(" ") + item
         severity_expr = (
             pl.when(
                 combined_desc.str.contains("|".join(_CRITICAL_KEYWORDS))
-                | (unsafe == "true")
             ).then(pl.lit(1, dtype=pl.Int8))
             .when(
                 combined_desc.str.contains("|".join(_SERIOUS_KEYWORDS))

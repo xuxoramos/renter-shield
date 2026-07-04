@@ -26,3 +26,9 @@ renter-shield = "renter_shield.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["renter_shield*"]
+
+[tool.pytest.ini_options]
+addopts = "-m 'not integration'"
+markers = [
+    "integration: hits live jurisdiction APIs; slow, network-dependent (run with -m integration)",
+]
