@@ -20,6 +20,8 @@ jobs:
         run: pip install -e ".[dev,download]"
 
       - name: Download data (parallel) and score
+        env:
+          SOCRATA_APP_TOKEN: ${{ secrets.SOCRATA_APP_TOKEN }}
         run: python -m renter_shield.cli --download --parallel
 
       - name: Upload scored output to server
