@@ -1,0 +1,46 @@
+name: Data Refresh
+
+on:
+  workflow_dispatch:  # manual trigger
+  schedule:
+    - cron: "0 6 * * 1"  # every Monday at 06:00 UTC
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev,download]"
+
+      - name: Download data (parallel) and score
+        run: python -m renter_shield.cli --download --parallel
+
+      - name: Upload scored output to server
+        env:
+          SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          HOST: ${{ secrets.HETZNER_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Copy scored parquet + any intermediate files the API needs
+          scp -i ~/.ssh/deploy_key \
+            output/all_landlords_harm_scores.parquet \
+            root@"$HOST":/opt/renter-shield/output/
+
+          # Also sync the raw data directory so the API address index works
+          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" \
+            data/ root@"$HOST":/opt/renter-shield/data/
+
+          # Restart the app container to pick up new data
+          ssh -i ~/.ssh/deploy_key root@"$HOST" \
+            "cd /opt/renter-shield/deploy && docker compose restart app"

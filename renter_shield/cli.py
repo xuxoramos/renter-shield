@@ -42,6 +42,11 @@ def main() -> None:
         action="store_true",
         help="Download raw data before processing (requires sodapy for NYC)",
     )
+    parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="Download jurisdictions in parallel (use with --download)",
+    )
 
     args = parser.parse_args()
 
@@ -50,9 +55,29 @@ def main() -> None:
     if args.download:
         from renter_shield.pipeline import _load_adapter
 
-        for jur in jurisdictions or list(JURISDICTION_REGISTRY):
-            adapter = _load_adapter(jur, args.data_dir)
-            adapter.download()
+        jur_list = jurisdictions or list(JURISDICTION_REGISTRY)
+
+        if args.parallel:
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
+            def _download_one(jur: str) -> str:
+                adapter = _load_adapter(jur, args.data_dir)
+                adapter.download()
+                return jur
+
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                futures = {pool.submit(_download_one, j): j for j in jur_list}
+                for fut in as_completed(futures):
+                    jur = futures[fut]
+                    try:
+                        fut.result()
+                        print(f"✓ {jur} download complete")
+                    except Exception as exc:
+                        print(f"✗ {jur} download failed: {exc}")
+        else:
+            for jur in jur_list:
+                adapter = _load_adapter(jur, args.data_dir)
+                adapter.download()
 
     run(
         jurisdictions=jurisdictions,
