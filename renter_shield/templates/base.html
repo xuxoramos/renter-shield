@@ -17,7 +17,9 @@
     <div class="container wide topnav-inner">
       <a href="/renter/" class="topnav-brand">🏠 Renter Shield</a>
       <div class="topnav-links">
-        {% if request.url.path.startswith('/investigator') %}
+        {% if request.url.path.startswith('/developer') %}
+        <a href="/developer/" class="nav-active">Developer API</a>
+        {% elif request.url.path.startswith('/investigator') %}
         <a href="/renter/">Switch to Renter Search</a>
         <a href="/investigator/" class="nav-active">Investigator</a>
         {% else %}
@@ -30,6 +32,8 @@
         <span class="topnav-user">{{ user.name }}</span>
         {% if user.scope == "investigator" %}
         <a href="/investigator/sign-out" class="topnav-signout">Sign out</a>
+        {% elif user.scope == "developer" %}
+        <a href="/developer/sign-out" class="topnav-signout">Sign out</a>
         {% else %}
         <a href="/renter/sign-out" class="topnav-signout">Sign out</a>
         {% endif %}

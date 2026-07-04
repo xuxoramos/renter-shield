@@ -35,6 +35,7 @@ from renter_shield.config import SEVERITY_POINTS
 from renter_shield import audit
 from renter_shield.web import router as web_router
 from renter_shield.web_investigator import router as web_investigator_router
+from renter_shield.web_developer import router as web_developer_router
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -56,7 +57,7 @@ DISCLAIMER = (
 _API_KEYS_FILE = Path(os.getenv("LI_API_KEYS_FILE", "api_keys.txt"))
 _API_KEYS_ENV = os.getenv("LI_API_KEYS", "")
 
-VALID_SCOPES = {"renter", "investigator"}
+VALID_SCOPES = {"renter", "investigator", "developer"}
 
 
 def _load_api_keys() -> dict[str, str]:
@@ -118,8 +119,11 @@ async def _verify_api_key(
 async def _require_investigator(
     scope: Annotated[str, Depends(_verify_api_key)],
 ) -> str:
-    """Gate that rejects non-investigator keys."""
-    if scope != "investigator":
+    """Gate that rejects non-investigator keys.
+
+    Developer-scoped keys are granted investigator-grade access.
+    """
+    if scope not in ("investigator", "developer"):
         raise HTTPException(
             status_code=403,
             detail="This endpoint requires an investigator-scoped API key.",
@@ -700,6 +704,7 @@ app.include_router(renter_router, prefix="/api")
 app.include_router(investigator_router, prefix="/api")
 app.include_router(web_router)
 app.include_router(web_investigator_router)
+app.include_router(web_developer_router)
 
 # Static files (CSS, htmx)
 _STATIC_DIR = Path(__file__).parent / "static"

@@ -318,6 +318,19 @@ hr.st-hr {
 /* Muted text */
 .muted { color: var(--muted); }
 
+/* Code block (methodology formula, API examples) */
+.code-block {
+  background: var(--secondary-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+}
+
 /* Footer */
 footer {
   border-top: 1px solid var(--border);

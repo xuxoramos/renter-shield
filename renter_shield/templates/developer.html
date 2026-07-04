@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Developer API — Renter Shield{% endblock %}
+
+{% block content %}
+<h1>Developer API</h1>
+<p class="disclaimer">
+  Data is derived from publicly available government records and algorithmic
+  analysis. It does not constitute legal findings and requires independent
+  verification before any legal, administrative, or public action.
+</p>
+
+<h2>Authentication</h2>
+<p>Pass your token in the <code>X-API-Key</code> header on every request. Developer keys are granted investigator-grade access.</p>
+<div style="display:flex;align-items:center;gap:0.5rem;">
+  <code class="token-display" id="token-value">{{ token }}</code>
+  <button onclick="navigator.clipboard.writeText(document.getElementById('token-value').textContent).then(()=>{this.innerHTML='&#x2713;';setTimeout(()=>{this.innerHTML=this.dataset.icon},1500)})" data-icon='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5.5" y="5.5" width="8" height="8" rx="1"/><path d="M3 10.5V3a1 1 0 011-1h7.5"/></svg>' title="Copy to clipboard" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:0.3rem 0.4rem;line-height:1;display:flex;align-items:center;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5.5" y="5.5" width="8" height="8" rx="1"/><path d="M3 10.5V3a1 1 0 011-1h7.5"/></svg></button>
+</div>
+<p class="muted" style="margin-top:0.5rem;">Base URL: <code>https://rentershield.org/api</code> &middot; Interactive spec: <a href="/docs">/docs</a></p>
+
+<hr class="st-hr">
+
+<!-- Property level -->
+<h2>1. Property level</h2>
+<p>Look up buildings by address and retrieve a property's violation history.</p>
+
+<table class="data-table">
+  <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>GET</td><td><code>/api/investigator/address/search</code></td><td>Search properties by address substring. Params: <code>q</code> (min 3 chars), <code>jurisdiction</code>, <code>limit</code>, <code>offset</code>.</td></tr>
+    <tr><td>GET</td><td><code>/api/investigator/property/{bbl}</code></td><td>Full property detail with violation records.</td></tr>
+  </tbody>
+</table>
+
+<pre class="code-block">curl -H "X-API-Key: {{ token }}" \
+  "https://rentershield.org/api/investigator/address/search?q=main+st&limit=10"</pre>
+
+<hr class="st-hr">
+
+<!-- Landlord level -->
+<h2>2. Landlord level</h2>
+<p>Search and inspect landlords (owners) and their harm scores.</p>
+
+<table class="data-table">
+  <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>GET</td><td><code>/api/investigator/landlords/search</code></td><td>Search landlords across jurisdictions. Params: <code>name</code>, <code>jurisdiction</code>, <code>min_score</code>, <code>limit</code>, <code>offset</code>.</td></tr>
+    <tr><td>GET</td><td><code>/api/investigator/landlords/{owner_id}</code></td><td>Landlord detail: score components, SVI percentiles, confidence.</td></tr>
+    <tr><td>GET</td><td><code>/api/investigator/jurisdictions</code></td><td>List all jurisdictions with aggregate statistics.</td></tr>
+  </tbody>
+</table>
+
+<pre class="code-block">curl -H "X-API-Key: {{ token }}" \
+  "https://rentershield.org/api/investigator/landlords/search?name=smith&min_score=50"</pre>
+
+<hr class="st-hr">
+
+<!-- Combined level -->
+<h2>3. Combined level <span class="muted">(property × landlord)</span></h2>
+<p>Query the product of the two — landlords within a jurisdiction, joined with their property portfolios and violation counts.</p>
+
+<table class="data-table">
+  <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>GET</td><td><code>/api/investigator/jurisdictions/{jurisdiction}/landlords</code></td><td>Ranked landlords in a jurisdiction with property counts and violations. Params: <code>min_score</code>, <code>min_properties</code>, <code>name</code>, <code>limit</code>, <code>offset</code>.</td></tr>
+  </tbody>
+</table>
+
+<pre class="code-block">curl -H "X-API-Key: {{ token }}" \
+  "https://rentershield.org/api/investigator/jurisdictions/nyc/landlords?min_properties=3&limit=25"</pre>
+
+<hr class="st-hr">
+
+<details class="expander">
+  <summary>📖 Scoring methodology</summary>
+  <div class="body">
+    {% include "partials/methodology.html" %}
+  </div>
+</details>
+{% endblock %}

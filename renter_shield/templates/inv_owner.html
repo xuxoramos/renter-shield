@@ -80,6 +80,39 @@
 </details>
 
 <hr class="st-hr">
+
+<!-- Properties -->
+<h2>Properties ({{ properties|length }})</h2>
+{% if properties|length == 0 %}
+<p class="muted">No linked properties found for this owner.</p>
+{% else %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Address</th>
+      <th>BBL</th>
+      <th>Units</th>
+      <th>Violations</th>
+      <th>Critical</th>
+      <th>Open</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in properties %}
+    <tr>
+      <td>{{ p.address }}</td>
+      <td>{{ p.bbl }}</td>
+      <td>{{ "{:,.0f}".format(p.units) if p.units is not none else "—" }}</td>
+      <td>{{ "{:,}".format(p.total) }}</td>
+      <td>{{ "{:,}".format(p.critical) }}</td>
+      <td>{{ "{:,}".format(p.open) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<hr class="st-hr">
 <details class="expander">
   <summary>📖 Methodology</summary>
   <div class="body">

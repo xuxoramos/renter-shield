@@ -36,7 +36,7 @@ _DB_PATH = _DB_DIR / "audit.db"
 SESSION_EXPIRY_DAYS = int(os.getenv("LI_SESSION_EXPIRY_DAYS", "90"))
 
 # Scopes that can be assigned at registration
-VALID_SCOPES = {"renter", "investigator"}
+VALID_SCOPES = {"renter", "investigator", "developer"}
 
 
 # ---------------------------------------------------------------------------
@@ -55,7 +55,7 @@ def _get_db() -> sqlite3.Connection:
             name        TEXT NOT NULL,
             email       TEXT NOT NULL,
             role        TEXT NOT NULL DEFAULT '',
-            scope       TEXT NOT NULL CHECK (scope IN ('renter', 'investigator')),
+            scope       TEXT NOT NULL,
             token       TEXT NOT NULL UNIQUE,
             registered_at TEXT NOT NULL,
             ip          TEXT DEFAULT ''
@@ -83,7 +83,44 @@ def _get_db() -> sqlite3.Connection:
         CREATE INDEX IF NOT EXISTS idx_page_views_user ON page_views(user_id);
         CREATE INDEX IF NOT EXISTS idx_api_calls_user ON api_calls(user_id);
     """)
+    _migrate_scope_check(conn)
     return conn
+
+
+def _migrate_scope_check(conn: sqlite3.Connection) -> None:
+    """Drop the legacy ``CHECK (scope IN ('renter', 'investigator'))`` constraint.
+
+    Existing databases created before the ``developer`` scope was added carry a
+    restrictive CHECK that rejects new scopes.  SQLite can't ALTER a constraint,
+    so rebuild the table without it (Python's ``VALID_SCOPES`` enforces scopes).
+    """
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'"
+    ).fetchone()
+    if not row or "CHECK" not in (row["sql"] or ""):
+        return  # already migrated (no CHECK) or table absent
+
+    conn.execute("PRAGMA foreign_keys=OFF")
+    conn.executescript("""
+        BEGIN;
+        CREATE TABLE users_new (
+            id          TEXT PRIMARY KEY,
+            name        TEXT NOT NULL,
+            email       TEXT NOT NULL,
+            role        TEXT NOT NULL DEFAULT '',
+            scope       TEXT NOT NULL,
+            token       TEXT NOT NULL UNIQUE,
+            registered_at TEXT NOT NULL,
+            ip          TEXT DEFAULT ''
+        );
+        INSERT INTO users_new SELECT id, name, email, role, scope, token, registered_at, ip FROM users;
+        DROP TABLE users;
+        ALTER TABLE users_new RENAME TO users;
+        CREATE INDEX IF NOT EXISTS idx_users_token ON users(token);
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+        COMMIT;
+    """)
+    conn.execute("PRAGMA foreign_keys=ON")
 
 
 # Module-level connection (lazy)

@@ -76,16 +76,18 @@ _CONFIDENCE_DESCS = {
 _scores_df: pl.DataFrame | None = None
 _props_df: pl.DataFrame | None = None
 _viols_df: pl.DataFrame | None = None
+_owner_reg_df: pl.DataFrame | None = None
 
 
 def _load_data() -> None:
-    global _scores_df, _props_df, _viols_df  # noqa: PLW0603
+    global _scores_df, _props_df, _viols_df, _owner_reg_df  # noqa: PLW0603
     if _scores_df is not None:
         return
 
     scores_file = OUTPUT_DIR / "all_landlords_harm_scores.parquet"
     props_file = OUTPUT_DIR / "properties.parquet"
     viols_file = OUTPUT_DIR / "violations.parquet"
+    owner_file = OUTPUT_DIR / "owner_registrations.parquet"
 
     _scores_df = pl.read_parquet(scores_file) if scores_file.exists() else pl.DataFrame()
     _props_df = pl.read_parquet(props_file) if props_file.exists() else pl.DataFrame(
@@ -95,6 +97,10 @@ def _load_data() -> None:
     _viols_df = pl.read_parquet(viols_file) if viols_file.exists() else pl.DataFrame(
         schema={"violation_id": pl.Utf8, "bbl": pl.Utf8, "severity_tier": pl.Int8,
                 "status": pl.Utf8, "jurisdiction": pl.Utf8}
+    )
+    _owner_reg_df = pl.read_parquet(owner_file) if owner_file.exists() else pl.DataFrame(
+        schema={"owner_id": pl.Utf8, "jurisdiction": pl.Utf8, "confidence": pl.Utf8,
+                "registration_id": pl.Utf8}
     )
 
 
@@ -561,6 +567,24 @@ async def inv_owner_detail(
 
     conf = row.get("confidence", "")
 
+    # Properties linked to this owner (via owner_registrations → properties)
+    properties: list[dict] = []
+    owner_regs = _owner_reg_df.filter(pl.col("owner_id") == owner_id_decoded)
+    if len(owner_regs) > 0:
+        reg_ids = owner_regs["registration_id"].to_list()
+        owner_props = _props_df.filter(pl.col("registration_id").is_in(reg_ids))
+        for prow in owner_props.sort("address").iter_rows(named=True):
+            prop_bbl = prow["bbl"]
+            pviols = _viols_df.filter(pl.col("bbl") == prop_bbl)
+            properties.append({
+                "bbl": prop_bbl,
+                "address": prow.get("address") or prop_bbl,
+                "units": prow.get("units_residential"),
+                "total": len(pviols),
+                "critical": len(pviols.filter(pl.col("severity_tier") == 1)),
+                "open": len(pviols.filter(pl.col("status") == "open")),
+            })
+
     return templates.TemplateResponse(request, "inv_owner.html", {
         "user": user,
         "display_name": row["owner_id"],
@@ -582,5 +606,6 @@ async def inv_owner_detail(
         "theme_portfolio": row.get("theme_portfolio"),
         "theme_compliance": row.get("theme_compliance"),
         "breakdown": breakdown,
+        "properties": properties,
         "raw_json": raw_json,
     })
