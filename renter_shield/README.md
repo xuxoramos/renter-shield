@@ -64,6 +64,7 @@ in `config.py:JURISDICTION_REGISTRY`.
 | Austin         | Code Complaint Cases | Socrata | `austin-{PARCELID}` | None |
 | Miami-Dade     | Code Compliance Violations + Building Violations | ArcGIS REST | `miami-{FOLIO}` | Building Violation VIOL_NAME (owner/agent) |
 | Detroit        | Blight Tickets | ArcGIS REST | `det-{parcel_id}` | property_owner_name + mailing address |
+| Baton Rouge    | 311 Code/Blight Complaints + Property Info + Tax Roll | Socrata | `br-{lot_id}` | Tax Roll taxpayer_name (via address bridge) |
 
 ### Deferred jurisdictions
 

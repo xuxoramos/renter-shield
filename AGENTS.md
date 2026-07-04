@@ -22,8 +22,10 @@ evidentiary snapshots.
   No persistent `.duckdb` file — Parquet is the storage layer.
 - **FastAPI server** (`api.py`): read-only queries against scored Parquet
   output. API key auth via header.
-- **CLI** (`cli.py`): `download`, `score` subcommands. Data dir defaults to
-  `data/` (relative, gitignored).
+- **CLI** (`cli.py`): flag-based (`--download`, `--parallel`, `--strict`,
+  `-j/--jurisdictions`). Downloads (optionally in parallel), validates each
+  adapter's schema for drift, then scores. Data dir defaults to `data/`
+  (relative, gitignored).
 
 ## Code Style
 

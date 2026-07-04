@@ -178,7 +178,21 @@ It checks:
 
 ## 8. Updating data
 
-When new scores are generated:
+### Automated (recommended)
+
+The **Data Refresh** GitHub Actions workflow (`.github/workflows/data-refresh.yml`)
+downloads all jurisdictions in parallel, validates schemas, scores, and syncs
+the output to the server. It runs weekly (Monday 06:00 UTC) and can be
+triggered manually from **Actions → Data Refresh → Run workflow**.
+
+Required repository secrets: `HETZNER_SSH_KEY`, `HETZNER_HOST`, and
+`SOCRATA_APP_TOKEN` (to avoid Socrata throttling). If any jurisdiction's
+upstream schema drifts, the healthy jurisdictions still refresh and the job is
+marked failed with a `schema_drift.json` report.
+
+### Manual
+
+When new scores are generated locally:
 
 ```bash
 cd /opt/renter-shield

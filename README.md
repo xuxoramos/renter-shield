@@ -47,6 +47,7 @@ To restore data after cloning:
 | Austin         | Code Complaint Cases | Socrata | None |
 | Miami-Dade     | Code Compliance Violations + Building Violations | ArcGIS REST | Building Violation VIOL_NAME (owner/agent) |
 | Detroit        | Blight Tickets | ArcGIS REST | property_owner_name + mailing address |
+| Baton Rouge    | 311 Code/Blight Complaints + Property Info + Tax Roll | Socrata | Tax Roll taxpayer_name (via address bridge to lot_id) |
 
 ### Scored Jurisdictions
 
@@ -64,6 +65,7 @@ property/violation records.
 | Miami-Dade | 260 | 61K (100%) |
 | Pittsburgh | 135 | 48K (90%) |
 | Chicago | 1 | 32K (100%) |
+| Baton Rouge | 35 | 198K (100%) |
 | LA | — | 85K (100%) |
 | Austin | — | 28K (100%) |
 | SF | — | 10K (100%) |
@@ -331,19 +333,37 @@ pip install -e ".[download]"
 ## Usage
 
 ```bash
-# Download data for all jurisdictions
-renter-shield download --all
+# Optional: set a Socrata app token to avoid strict throttling limits
+export SOCRATA_APP_TOKEN="your-token-here"
+
+# Download all jurisdictions in parallel, then validate schemas and score
+renter-shield --download --parallel
 
 # Download a single jurisdiction
-renter-shield download --jurisdiction nyc
+renter-shield --download -j nyc
 
-# Run the scoring pipeline
-renter-shield score
+# Score only (data already present in data/)
+renter-shield
+
+# Score specific jurisdictions
+renter-shield -j nyc chicago
+
+# Abort instead of skipping if any jurisdiction fails schema validation
+renter-shield --download --parallel --strict
 
 # Start the API + web UI server (dual-audience, scoped keys)
 export LI_API_KEYS="inv-key:investigator,renter-key:renter"
 uvicorn renter_shield.api:app --host 0.0.0.0 --port 8000
 ```
+
+### Schema-drift validation
+
+Before scoring, the CLI resolves each adapter's normalized schema to detect
+upstream column renames or removals (`ColumnNotFoundError`-class failures).
+Drifted jurisdictions are reported to `output/schema_drift.json`, dropped from
+the run, and the healthy jurisdictions are still scored.  The process exits
+non-zero so CI can flag the run.  Pass `--strict` to abort entirely instead.
+
 
 ## Web UI
 
