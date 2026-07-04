@@ -96,7 +96,7 @@ def _fetch_all_features() -> pl.DataFrame:
         if not features:
             break
 
-        batches.append(pl.DataFrame([f["attributes"] for f in features]))
+        batches.append(pl.DataFrame([f["attributes"] for f in features], infer_schema_length=None))
 
         # ArcGIS signals last page when exceededTransferLimit is absent/false
         if not data.get("exceededTransferLimit", False):

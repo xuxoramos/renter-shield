@@ -55,7 +55,7 @@ def _paginated_get(client, dataset_id: str, *, where: str | None = None,
                 time.sleep(wait)
         if not batch:
             break
-        batches.append(pl.DataFrame(batch))
+        batches.append(pl.DataFrame(batch, infer_schema_length=None))
         total += len(batch)
         print(f"  fetched {total} rows so far…")
         if len(batch) < page_size:

@@ -104,7 +104,7 @@ def _paginated_socrata_get(
                 time.sleep(2 ** attempt)
         if not batch:
             break
-        batches.append(pl.DataFrame(batch))
+        batches.append(pl.DataFrame(batch, infer_schema_length=None))
         total += len(batch)
         print(f"  fetched {total} rows so far…")
         if len(batch) < _PAGE_SIZE:

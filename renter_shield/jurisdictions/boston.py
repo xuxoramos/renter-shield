@@ -82,7 +82,7 @@ def _download_ckan_resource(
         records = data["result"]["records"]
         if not records:
             break
-        batches.append(pl.DataFrame(records))
+        batches.append(pl.DataFrame(records, infer_schema_length=None))
         offset += len(records)
 
     df = pl.concat(batches, how="diagonal_relaxed") if batches else pl.DataFrame()
