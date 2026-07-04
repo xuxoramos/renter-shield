@@ -19,12 +19,15 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev,download]"
 
-      - name: Download data (parallel) and score
+      - name: Download data (parallel), validate schema, and score
+        id: score
+        continue-on-error: true  # let healthy data still upload; drift gate below fails the job
         env:
           SOCRATA_APP_TOKEN: ${{ secrets.SOCRATA_APP_TOKEN }}
         run: python -m renter_shield.cli --download --parallel
 
       - name: Upload scored output to server
+        if: hashFiles('output/all_landlords_harm_scores.parquet') != ''
         env:
           SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
           HOST: ${{ secrets.HETZNER_HOST }}
@@ -46,3 +49,13 @@ jobs:
           # Restart the app container to pick up new data
           ssh -i ~/.ssh/deploy_key root@"$HOST" \
             "cd /opt/renter-shield/deploy && docker compose restart app"
+
+      - name: Flag schema drift
+        if: always()
+        run: |
+          if [ -f output/schema_drift.json ]; then
+            echo "::error::Schema drift detected — some jurisdictions were skipped."
+            cat output/schema_drift.json
+            exit 1
+          fi
+          echo "No schema drift detected."

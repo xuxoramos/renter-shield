@@ -36,6 +36,60 @@ def _load_adapter(jurisdiction: str, data_dir: Path) -> JurisdictionAdapter:
     return adapter_cls(data_dir)
 
 
+def validate_jurisdictions(
+    jurisdictions: list[str] | None = None,
+    data_dir: str | Path = "data",
+) -> dict[str, list[str]]:
+    """Preflight-check each jurisdiction's normalized load path for schema drift.
+
+    Resolves the lazy schema of ``load_violations``/``load_properties``/
+    ``load_contacts`` without materializing data.  This surfaces upstream
+    column renames/removals (the ``ColumnNotFoundError`` class of failures)
+    *before* the expensive scoring step runs.
+
+    Returns
+    -------
+    Mapping of ``{jurisdiction: [problem, ...]}`` for jurisdictions that fail.
+    An empty dict means every requested jurisdiction is healthy.
+    """
+    data_dir = Path(data_dir)
+    if jurisdictions is None:
+        jurisdictions = list(JURISDICTION_REGISTRY)
+
+    checks = [
+        ("violations", "load_violations", VIOLATIONS_SCHEMA),
+        ("properties", "load_properties", PROPERTIES_SCHEMA),
+        ("contacts", "load_contacts", CONTACTS_SCHEMA),
+    ]
+
+    problems: dict[str, list[str]] = {}
+    for jur in jurisdictions:
+        issues: list[str] = []
+        try:
+            adapter = _load_adapter(jur, data_dir)
+        except Exception as exc:  # noqa: BLE001 — report, don't crash the run
+            problems[jur] = [f"adapter load failed: {type(exc).__name__}: {exc}"]
+            continue
+
+        for label, method, schema in checks:
+            try:
+                lf = getattr(adapter, method)()
+                cols = set(lf.collect_schema().names())
+                missing = set(schema) - cols
+                if missing:
+                    issues.append(
+                        f"{label}: missing output columns {sorted(missing)}"
+                    )
+            except Exception as exc:  # noqa: BLE001 — capture drift as a problem
+                issues.append(f"{label}: {type(exc).__name__}: {exc}")
+
+        if issues:
+            problems[jur] = issues
+
+    return problems
+
+
+
 def run(
     jurisdictions: list[str] | None = None,
     data_dir: str | Path = "data",

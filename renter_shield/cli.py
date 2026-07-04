@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+import sys
 from pathlib import Path
 
 from renter_shield.config import JURISDICTION_REGISTRY
@@ -47,15 +49,21 @@ def main() -> None:
         action="store_true",
         help="Download jurisdictions in parallel (use with --download)",
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit non-zero if any jurisdiction fails schema validation "
+             "(default: drop drifted jurisdictions and continue)",
+    )
 
     args = parser.parse_args()
 
-    jurisdictions = args.jurisdictions
+    jurisdictions = args.jurisdictions or list(JURISDICTION_REGISTRY)
 
     if args.download:
         from renter_shield.pipeline import _load_adapter
 
-        jur_list = jurisdictions or list(JURISDICTION_REGISTRY)
+        jur_list = jurisdictions
 
         if args.parallel:
             from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -79,12 +87,50 @@ def main() -> None:
                 adapter = _load_adapter(jur, args.data_dir)
                 adapter.download()
 
+    # ------------------------------------------------------------------
+    # Preflight schema validation — flag drift BEFORE the scoring step
+    # ------------------------------------------------------------------
+    from renter_shield.pipeline import validate_jurisdictions
+
+    problems = validate_jurisdictions(jurisdictions, args.data_dir)
+    healthy = [j for j in jurisdictions if j not in problems]
+
+    if problems:
+        print(f"\n{'=' * 60}")
+        print("⚠  SCHEMA DRIFT DETECTED")
+        print("=" * 60)
+        for jur, issues in problems.items():
+            print(f"  ✗ {jur}")
+            for issue in issues:
+                print(f"      - {issue}")
+
+        # Persist a machine-readable report for CI to gate on.
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        report_path = args.output_dir / "schema_drift.json"
+        report_path.write_text(json.dumps(problems, indent=2))
+        print(f"\nDrift report written to {report_path}")
+
+        if args.strict:
+            print("\n--strict set: aborting without scoring.")
+            sys.exit(1)
+
+        if not healthy:
+            print("\nNo healthy jurisdictions remain. Aborting.")
+            sys.exit(1)
+
+        print(f"\nContinuing with {len(healthy)} healthy jurisdiction(s): {healthy}")
+
     run(
-        jurisdictions=jurisdictions,
+        jurisdictions=healthy,
         data_dir=args.data_dir,
         output_dir=args.output_dir,
         top_n=args.top_n,
     )
+
+    # Flag the run as failed if drift occurred, even though healthy
+    # jurisdictions were still scored and exported.
+    if problems:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
