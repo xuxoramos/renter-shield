@@ -114,7 +114,10 @@ def _arcgis_paginated_get(
         features = data.get("features", [])
         if not features:
             break
-        batches.append(pl.DataFrame([f["attributes"] for f in features]))
+        batches.append(pl.DataFrame(
+            [f["attributes"] for f in features],
+            infer_schema_length=None,
+        ))
         total += len(features)
         print(f"  fetched {total} features…")
         if not data.get("exceededTransferLimit", False) and len(features) < page_size:
@@ -228,7 +231,7 @@ class MiamiAdapter(JurisdictionAdapter):
                 "inspection_date": pl.Date, "jurisdiction": pl.Utf8,
             })
 
-        return pl.concat(frames)
+        return pl.concat(frames, how="diagonal_relaxed")
 
     # ------------------------------------------------------------------
     # load_properties
@@ -258,7 +261,7 @@ class MiamiAdapter(JurisdictionAdapter):
             return _empty_properties()
 
         props = (
-            pl.concat(frames)
+            pl.concat(frames, how="diagonal_relaxed")
             .unique(subset=["bbl"])
             .with_columns(
                 pl.lit(None, dtype=pl.Float64).alias("units_residential"),

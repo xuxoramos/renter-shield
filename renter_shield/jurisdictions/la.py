@@ -135,7 +135,7 @@ class LAAdapter(JurisdictionAdapter):
             print("[la] WARNING: no rows returned from either dataset")
             return
 
-        df = pl.concat([open_df, closed_df])
+        df = pl.concat([open_df, closed_df], how="diagonal_relaxed")
         out = self.data_dir / "la_cases.parquet"
         df.write_parquet(out, compression="zstd", compression_level=3)
         print(f"[la] saved {len(df)} rows → {out}")
